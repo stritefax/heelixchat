@@ -1,0 +1,17 @@
+/* chat.css */
+:root {
+  -amplify-colors-primary-10: var(--primary-hover-color);
+  --amplify-colors-primary-20: #3364ad53;
+  --amplify-colors-primary-40: #3364ad80;
+  --amplify-colors-primary-60: #3364adb0;
+  --amplify-colors-primary-80: var(--primary-color);
+  --amplify-colors-primary-90: var(--primary-button-hover-color);
+  --amplify-colors-primary-100: #0a2b5c;
+  --amplify-colors-border-primary: var(--default-border-color);
+}
+
+.chat-app-container {
+  width: 100%;
+  height: 100%;
+  transition: opacity 0.3s ease-in-out;
+}

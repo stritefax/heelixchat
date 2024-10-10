@@ -1,0 +1,100 @@
+{
+  "$schema": "../../node_modules/@tauri-apps/cli/schema.json",
+  "build": {
+    "beforeBuildCommand": "yarn build",
+    "beforeDevCommand": "yarn start",
+    "devPath": "http://localhost:5173",
+    "distDir": "../dist",
+    "withGlobalTauri": false
+  },
+  "package": {
+    "productName": "Heelix Chat",
+    "version": "0.9.5"
+  },
+  "tauri": {
+    "systemTray": {
+      "iconPath": "icons/icon_64.png",
+      "iconAsTemplate": true
+    },
+    "allowlist": {
+      "window": {
+        "all": true,
+        "hide": true,
+        "show": true
+      },
+      "os": {
+      "all": true
+      },
+      "all": true,
+      "fs": {
+        "scope": [
+          "$RESOURCE/*"
+        ]
+      }
+    },
+    "bundle": {
+      "active": true,
+      "category": "DeveloperTool",
+      "copyright": "",
+      "deb": {
+        "depends": []
+      },
+      "externalBin": [],
+      "icon": [
+        "icons/icon_16.png",
+        "icons/icon_32.png",
+        "icons/icon_64.png",
+        "icons/icon_128.png",
+        "icons/icon_256.png",
+        "icons/icon_512.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "identifier": "com.heelixchat.dev",
+      "longDescription": "",
+      "macOS": {
+        "entitlements": null,
+        "exceptionDomain": "",
+        "frameworks": [],
+        "providerShortName": null,
+        "signingIdentity": null
+      },
+      "resources": [
+        "resources/*"
+      ],
+      "shortDescription": "",
+      "targets": "all",
+      "windows": {
+        "certificateThumbprint": null,
+        "digestAlgorithm": "sha256",
+        "timestampUrl": ""
+      }
+    },
+    "security": {
+      "csp": null,
+      "dangerousUseHttpScheme": true,
+      "dangerousRemoteDomainIpcAccess": [
+        {
+          "domain": "http://localhost:49212",
+          "windows": [
+            "main",
+            "*"
+          ]
+        }
+      ]
+    },
+    "updater": {
+      "active": false
+    },
+    "windows": [
+      {
+        "url": "index.html",
+        "fullscreen": false,
+        "height": 800,
+        "resizable": true,
+        "title": "Heelix Chat",
+        "width": 1200
+      }
+    ]
+  }
+}

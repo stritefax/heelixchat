@@ -1,0 +1,106 @@
+html,
+body,
+#root {
+  height: 100%;
+  width: 100%;
+
+  font-weight: 400;
+  font-family: "Montserrat", sans-serif;
+  color: var(--text-default-color);
+}
+
+:root {
+  --primary-color: #3363ad;
+  --primary-hover-color: #3363ad1f;
+  --primary-button-hover-color: #12356a;
+  --primary-dissabled-color: #3363ad1f;
+  --secondary-color: #edf2f7;
+  --secondary-hover-color: #e2e8f0;
+  --text-default-color: #555555;
+  --text-secondary-color: #fff;
+  --text-table-header-color: #70788a;
+  --title-failure-color: #e49595;
+  --text-dissabled: #eaecf0;
+  --page-background-color: #f9f9fb;
+  /* --card-header-background: linear-gradient(0deg, #edeff3, #edeff3),
+    linear-gradient(0deg, #eaecf0, #eaecf0); */
+  --card-header-background: #fff;
+  --card-content-background: #fff;
+  --table-header-background: #edeff3;
+  --default-border-color: #d9d9d9;
+  --active-border-color: #3363ad;
+  --active-button-text-color: #fff;
+  --danger-color: #f44336;
+  --recording-active-color: #008000;
+  --scrollbar-color: rgba(0, 0, 0, 0.4);
+  --tooltip-background: #333335;
+  --icon-background: #9e9e9e1a;
+  --icon-active-background: #3363ad1a;
+
+  --paginator-background: #fff;
+
+  --category-default-color: #dbd83e;
+  --category-default-light-color: #dbd83e1a;
+  --category-1-color: #30b3a6;
+  --category-1-light-color: #eaf7f6;
+  --category-2-color: #4352d2;
+  --category-2-light-color: #4352d21a;
+  --category-3-color: #7d0755;
+  --category-3-light-color: #7d07551a;
+  --category-4-color: #ffa24b;
+  --category-4-light-color: #ffa24b1a;
+  --category-5-color: #ea3c3c;
+  --category-5-light-color: #ea3c3c1a;
+  --category-6-color: #de3cea;
+  --category-6-light-color: #de3cea1a;
+  --category-7-color: #1cc227;
+  --category-7-light-color: #1cc2271a;
+
+  --button-icon-secondary-color: #e0e5e9;
+  --scrollbar-width: 4px;
+  --min-spinner-height: 100px;
+  --fullwidth: 100%;
+
+  --space-xs: 4px;
+  --space-s: 8px;
+  --space-default: 12px;
+  --space-l: 18px;
+  --space-xl: 24px;
+
+  --default-radius: 8px;
+  --card-radius: 8px;
+  --icon-radius: 6px;
+
+  --page-padding: var(--space-l);
+
+  --content-header-height: 46px;
+  --fixed-header-height: 0;
+  --sidebar-width: 220px;
+
+  --breakpoint-medium: 768px;
+  --breakpoint-large: 1024px;
+}
+
+::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: none;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-color);
+  border-radius: 10rem;
+}
+
+::-webkit-scrollbar-track-piece:start {
+  background: transparent;
+}
+
+::-webkit-scrollbar-track-piece:end {
+  background: transparent;
+}
