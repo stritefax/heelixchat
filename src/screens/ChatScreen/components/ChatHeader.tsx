@@ -3,6 +3,7 @@ import { UserProfileInitials } from "@heelix-app/components";
 import { IconHistory, IconPlus, IconX } from "@tabler/icons-react";
 import { IconButton, Tooltip } from "@chakra-ui/react";
 import styled, { css } from "styled-components";
+import { useUser } from "@/state/userState";
 import { useRecordingState } from "../../../Providers/RecordingStateProvider";
 
 const MainContainer = styled.div`
@@ -53,25 +54,19 @@ const ContentContainer = styled.div`
 `;
 
 type ChatHeaderProps = {
-  user?: {
-    picture?: string;
-    name?: string;
-  };
   profileMenu: ReactElement;
   onClickNewChat: () => void;
   toggleChatHistory: () => void;
-  isHistoryOpen: boolean;
   toggleHistory: () => void;
 };
 
 export const ChatHeader: FC<ChatHeaderProps> = ({
-  user,
   profileMenu,
   onClickNewChat,
   toggleChatHistory,
-  isHistoryOpen,
   toggleHistory,
 }) => {
+  const { user } = useUser();
   const { isRecording } = useRecordingState();
   return (
     <MainContainer>
@@ -107,8 +102,8 @@ export const ChatHeader: FC<ChatHeaderProps> = ({
       </LeftContainer>
       <ContentContainer>
         <UserProfileInitials
-          picture={user?.picture || ""}
-          name={user?.name || ""}
+          picture={user.imageUrl}
+          name={user.name}
           isRecording={isRecording}
         >
           {profileMenu}

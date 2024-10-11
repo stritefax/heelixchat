@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import type { ActivityLogItem } from "./types";
 import { buildActivityLogFromResponse } from "./utils";
 import { useGlobalSettings } from "../SettingsProvider";
+import { useUser } from "@/state/userState";
 
 type RecordingState = {
   isRecording: boolean;
@@ -38,6 +39,7 @@ export const RecordingStateContext = createContext<RecordingStateContextType>({
 
 export const RecordingStateProvider: FC<PropsWithChildren> = ({ children }) => {
   const { settings } = useGlobalSettings();
+  const { user } = useUser();
 
   const [isRecording, setRecording] = useState<RecordingState["isRecording"]>(
     defaultRecordingState.isRecording
@@ -119,7 +121,7 @@ export const RecordingStateProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const recordSingleActivity = () => {
     invoke("record_single_activity", {
-      user: 1,
+      user: user.id,
       variant: import.meta.env.VITE_VARIANT,
       environment: import.meta.env.VITE_ENVIRONMENT,
     }).then((response) => {

@@ -1,6 +1,7 @@
 import { FC } from "react";
 import styled, { css } from "styled-components";
 import { Image } from "@chakra-ui/react";
+import { useUser } from "@/state/userState";
 
 type WrapperProps = {
   $reverse: boolean;
@@ -55,17 +56,10 @@ const CompanyNameText = styled.p`
   text-transform: capitalize;
 `;
 type UserProfileProps = {
-  user: {
-    name: string;
-    imageUrl: string;
-    company: string;
-  };
   reverse?: boolean;
 };
-export const UserProfile: FC<UserProfileProps> = ({
-  user,
-  reverse = false,
-}) => {
+export const UserProfile: FC<UserProfileProps> = ({ reverse = false }) => {
+  const { user } = useUser();
   const getShortSurname = () => {
     const nameSplit = user.name.split(" ");
     return `${nameSplit?.[0] || ""} ${nameSplit?.[1]?.[0] || ""}.`;
@@ -76,13 +70,12 @@ export const UserProfile: FC<UserProfileProps> = ({
         <Image
           borderRadius="var(--icon-radius)"
           boxSize="38px"
-          src={user.imageUrl || ""}
+          src={user.imageUrl}
           alt={user.name}
         />
       </ImageWrapper>
       <InfoWrapper $reverse={reverse}>
         <NameText>{getShortSurname()}</NameText>
-        <CompanyNameText>{user.company}</CompanyNameText>
       </InfoWrapper>
     </Wrapper>
   );

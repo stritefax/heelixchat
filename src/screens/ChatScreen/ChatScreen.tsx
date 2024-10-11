@@ -674,7 +674,6 @@ export const ChatScreen: FC = () => {
           setSelectedActivityTexts([]);
         }}
         toggleChatHistory={handleChatHistoryToggle}
-        isHistoryOpen={isHistoryOpen}
         toggleHistory={toggleHistory}
       />
       <ReponsiveContainer>
