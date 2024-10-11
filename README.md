@@ -1,15 +1,19 @@
-# Heelix Chat
+# Heelix Chatbot
 
-Heelix is a ai chat app, which enhances llm capabilities by adding context
+The open-source chatbot making RAG seamless. 
 
-- The app periodically collects data as documents while active in the background
-- Collected content is querried and appended to promts to generate better context
+Heelix is a desktop chat app written in Rust and Tauri, automatically augmenting LLM queries using text data from your machine collected via accessibility API and OCR. 
+
+- The app  collects text from documents visible in the foreground
+- Collected content organized into local SQL and vector databases
+- Top K results automatically injected into LLM query as context
+- Full privacy, only local data storage, use your own API key with Claude or OpenAI  
 
 ## Prerequisite
 
 - Install Node 18 (recommended: https://github.com/nvm-sh/nvm, normal install: https://nodejs.org/en/download/package-manager)
 - Install rust https://www.rust-lang.org/tools/install
-- Install tesseract https://tesseract-ocr.github.io/tessdoc/Installation.html
+- Install tesseract (optional) https://tesseract-ocr.github.io/tessdoc/Installation.html
 
 ## How to run
 
