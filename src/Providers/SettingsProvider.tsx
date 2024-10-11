@@ -13,26 +13,29 @@ import {
   settingDbItemsZod,
 } from "./RecordingStateProvider";
 
-export const DEFAULT_SETTINGS = {
+export const DEFAULT_SETTINGS: Settings = {
   isDevMode: false,
   useTrelloPoc: false,
   interval: "10",
   autoStart: false,
   apiChoice: "claude",
-  apiKey: "",
+  apiKeyClaude: "",
+  apiKeyOpenAi: "",
 };
 
 type Update = {
   (settings: Settings): Promise<void>;
 };
 
+type ApiChoice = "claude" | "openai";
 export type Settings = {
   isDevMode: boolean;
   interval: string;
   useTrelloPoc: boolean;
   autoStart: boolean;
-  apiChoice: string;
-  apiKey: string;
+  apiChoice: ApiChoice;
+  apiKeyClaude: string;
+  apiKeyOpenAi: string;
 };
 
 type SettingsContextType = {
@@ -45,7 +48,7 @@ const SettingsContext = createContext<SettingsContextType | undefined>(
 );
 
 export const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
 
   const getSettingOrEmpty = (
     settings: SettingDbItem[],
@@ -67,8 +70,10 @@ export const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
       useTrelloPoc: getSettingOrEmpty(response, "useTrelloPoc") == "true",
       isDevMode: getSettingOrEmpty(response, "isDevMode") == "true",
       autoStart: getSettingOrEmpty(response, "autoStart") == "true",
-      apiChoice: getSettingOrEmpty(response, "apiChoice") || "claude",
-      apiKey: getSettingOrEmpty(response, "apiKey") || "",
+      apiChoice:
+        (getSettingOrEmpty(response, "apiChoice") as ApiChoice) || "claude",
+      apiKeyClaude: getSettingOrEmpty(response, "apiKeyClaude") || "",
+      apiKeyOpenAi: getSettingOrEmpty(response, "apiKeyOpenAi") || "",
     };
   };
 

@@ -40,9 +40,8 @@ pub async fn send_prompt_to_openai(
     is_first_message: bool,
     combined_activity_text: String
 ) -> Result<(), String> {
-    let setting = app_handle.db(|db| get_setting(db, "apiKey").expect("Failed on apiKey"));
+    let setting = app_handle.db(|db| get_setting(db, "apiKeyOpenAi").expect("Failed on apiKeyOpenAi"));
    
-    let timeout = std::time::Duration::from_secs(60);
     let relevance_client = OpenAIClient::with_config(OpenAIConfig::new().with_api_key(&setting.setting_value));
     let mut filtered_context = String::new();
     let mut window_titles = Vec::new();

@@ -171,7 +171,7 @@ async fn main() {
             } else {
                 window.show().unwrap();
             }
-            
+
             let app_handle = app.handle();
             let _ = setup_directories::setup_dirs(
                 app_handle
@@ -314,8 +314,16 @@ async fn update_settings(app_handle: AppHandle, settings: Settings) {
         insert_or_update_setting(
             db,
             Setting {
-                setting_key: String::from("apiKey"),
-                setting_value: format!("{}", settings.apiKey),
+                setting_key: String::from("apiKeyClaude"),
+                setting_value: format!("{}", settings.apiKeyClaude),
+            },
+        )
+        .unwrap();
+        insert_or_update_setting(
+            db,
+            Setting {
+                setting_key: String::from("apiKeyOpenAi"),
+                setting_value: format!("{}", settings.apiKeyOpenAi),
             },
         )
         .unwrap();
@@ -351,7 +359,8 @@ fn get_app_permissions(app_handle: AppHandle) -> Result<Vec<Permission>, ()> {
 #[tauri::command]
 async fn record_single_activity(
     app_handle: AppHandle,
-    user: &str) -> Result<Vec<ActivityItem>, ()> {
+    user: &str,
+) -> Result<Vec<ActivityItem>, ()> {
     if user.is_empty() {
         return Ok(vec![]);
     }
@@ -479,7 +488,10 @@ fn delete_activity(app_handle: AppHandle, id: i64) -> Result<bool, String> {
 }
 
 #[tauri::command]
-fn get_activity_full_text_by_id(app_handle: tauri::AppHandle, id: i64) -> Result<Option<(String, String)>, String> {
+fn get_activity_full_text_by_id(
+    app_handle: tauri::AppHandle,
+    id: i64,
+) -> Result<Option<(String, String)>, String> {
     app_handle
         .db(|db| crate::activity_log_repository::get_activity_full_text_by_id(db, id, None))
         .map_err(|e| e.to_string())

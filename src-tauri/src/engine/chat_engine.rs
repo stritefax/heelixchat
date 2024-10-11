@@ -61,7 +61,7 @@ pub async fn send_prompt_to_llm(
     is_first_message: bool,
     combined_activity_text: String,
 ) -> Result<(), String> {
-    let setting = app_handle.db(|db| get_setting(db, "apiKey").expect("Failed on apiKey"));
+    let setting = app_handle.db(|db| get_setting(db, "apiKeyClaude").expect("Failed on apiKeyClaude"));
 
     let timeout = std::time::Duration::from_secs(60);
     let relevance_client = Client::builder()
@@ -524,7 +524,7 @@ pub async fn name_conversation(
     app_handle: tauri::AppHandle,
     user_input: String,
 ) -> Result<String, String> {
-    let setting = app_handle.db(|db| get_setting(db, "apiKey").expect("Failed on apiKey"));
+    let setting = app_handle.db(|db| get_setting(db, "apiKeyClaude").expect("Failed on apiKeyClaude"));
     let client = Client::new();
 
     let system_prompt = format!(

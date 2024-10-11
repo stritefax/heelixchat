@@ -4,12 +4,13 @@ import styled from "styled-components";
 import { motion, AnimatePresence } from "framer-motion";
 import { invoke } from "@tauri-apps/api/tauri";
 import { type } from "@tauri-apps/api/os";
-import { useSettings } from "@/state/settingsState";
-import { Input } from "@chakra-ui/react";
+import { Input, Select } from "@chakra-ui/react";
 import { useGlobalSettings } from "@/Providers/SettingsProvider";
 
 const KeyContainer = styled.div`
   display: flex;
+  flex-direction: column;
+  gap: 10px;
   padding: 10px;
 `;
 
@@ -139,8 +140,27 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
     checkPlatform();
   }, []);
 
+  type ApiChoice = "claude" | "openai";
+  const handleApiChoiceChange = (value: ApiChoice) => {
+    update({ ...settings, apiChoice: value });
+  };
+
+  const onChangeApiKey = (value: string) => {
+    if (settings.apiChoice === "claude") {
+      update({ ...settings, apiKeyClaude: value });
+    }
+    if (settings.apiChoice === "openai") {
+      update({ ...settings, apiKeyOpenAi: value });
+    }
+  };
+
   const nextStep = async () => {
-    if (step && steps.length - 1 && !settings.apiKey) {
+    if (
+      step &&
+      steps.length - 1 &&
+      !settings.apiKeyClaude &&
+      !settings.apiKeyOpenAi
+    ) {
       console.error("API key not set");
     }
 
@@ -187,12 +207,26 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
               )
             ) : (
               <KeyContainer>
+                <Select
+                  size="md"
+                  value={settings.apiChoice}
+                  onChange={(event) =>
+                    handleApiChoiceChange(event.target.value as ApiChoice)
+                  }
+                >
+                  <option value="claude">Claude</option>
+                  <option value="openai">OpenAI</option>
+                </Select>
+
                 <Input
                   placeholder="Api key"
                   style={{ color: "white" }}
-                  onChange={(event) =>
-                    update({ ...settings, apiKey: event.target.value })
+                  value={
+                    settings.apiChoice === "claude"
+                      ? settings.apiKeyClaude
+                      : settings.apiKeyOpenAi
                   }
+                  onChange={(event) => onChangeApiKey(event.target.value)}
                   _placeholder={{ opacity: 0.8, color: "inherit" }}
                 />
               </KeyContainer>

@@ -8,5 +8,6 @@ pub struct Settings {
     pub interval: String,
     pub autoStart: bool,
     pub apiChoice: String,
-    pub apiKey: String,
+    pub apiKeyClaude: String,
+    pub apiKeyOpenAi: String,
 }

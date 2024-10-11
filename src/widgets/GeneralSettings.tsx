@@ -19,18 +19,21 @@ export const GeneralSettings = () => {
     await update({ ...settings, autoStart: isChecked });
   };
 
+  type ApiChoice = "claude" | "openai";
   const handleApiChoiceChange = async (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
-    const apiChoice = event.target.value;
+    const apiChoice = event.target.value as ApiChoice;
     await update({ ...settings, apiChoice });
   };
 
-  const handleApiKeyChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const apiKey = event.target.value;
-    await update({ ...settings, apiKey });
+  const onChangeApiKey = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (settings.apiChoice === "claude") {
+      update({ ...settings, apiKeyClaude: event.target.value });
+    }
+    if (settings.apiChoice === "openai") {
+      update({ ...settings, apiKeyOpenAi: event.target.value });
+    }
   };
 
   return (
@@ -78,7 +81,14 @@ export const GeneralSettings = () => {
               </Text>
             </Flex>
             <Flex flex={2}>
-              <Input value={settings.apiKey} onChange={handleApiKeyChange} />
+              <Input
+                value={
+                  settings.apiChoice === "claude"
+                    ? settings.apiKeyClaude
+                    : settings.apiKeyOpenAi
+                }
+                onChange={onChangeApiKey}
+              />
             </Flex>
           </Flex>
           <Text fontSize="sm" color="gray.500">
