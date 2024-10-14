@@ -85,7 +85,7 @@ pub async fn start_a_monitoring_cycle(handle: AppHandle, app_data_dir: &str) -> 
     let combined_text_length = combined_text.len();
     let fraction_of_combined_text = (combined_text_length as f64 * 0.2) as usize; // Using element_tree dump if combined_text is too short
 
-    let full_activity_text = if active_window.app_name == "Heelix-chat" {
+    let full_activity_text = if active_window.app_name == "Heelix Chat" {
         "Heelix monitoring engine".to_string()
     } else if element_tree_dump.len() > fraction_of_combined_text {
         element_tree_dump.clone()
@@ -99,7 +99,7 @@ pub async fn start_a_monitoring_cycle(handle: AppHandle, app_data_dir: &str) -> 
     }
     // Adjust ocr_text if the app is PyCharm and element_tree_dump is significantly longer than combined_text
 // Adjust ocr_text based on the app and content
-    if active_window.app_name != "Microsoft PowerPoint" && active_window.app_name != "Heelix-chat" && active_window.app_name != "DataGrip" {
+    if active_window.app_name != "Microsoft PowerPoint" && active_window.app_name != "Heelix Chat" && active_window.app_name != "DataGrip" {
         if element_tree_dump.len() > fraction_of_combined_text {
             ocr_text = element_tree_dump.clone(); // Overwrite OCR text with element tree dump
         }
@@ -109,7 +109,7 @@ pub async fn start_a_monitoring_cycle(handle: AppHandle, app_data_dir: &str) -> 
     }
     let score = normalized_levenshtein(activity_log_item.ocr_text.as_str(), ocr_text.as_str()) * 100.0;
 // this way we're not comparing the OCR to the element tree. Now something to consider is limit the size of the text passed along to the LLM for analysis for 1000 tokens max, probably enough for classification
-    let editing_mode_str = if !is_editing_mode || active_window.app_name == "Heelix-chat" {
+    let editing_mode_str = if !is_editing_mode || active_window.app_name == "Heelix Chat" {
         "false".to_string()
     } else if score > 50.0 {
         "true".to_string()

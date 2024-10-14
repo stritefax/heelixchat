@@ -442,7 +442,7 @@ export const ChatScreen: FC = () => {
       }
       console.log("Sending combinedActivityText to LLM:", combinedActivityText);
 
-      if (settings.apiChoice === "openai") {
+      if (settings.api_choice === "openai") {
         await invoke("send_prompt_to_openai", {
           conversationHistory: fullConversation,
           isFirstMessage,

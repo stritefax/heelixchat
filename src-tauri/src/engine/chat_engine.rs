@@ -3,14 +3,12 @@ use log::{debug, error, info};
 use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
 use serde_json;
-use std::collections::HashMap;
 use std::collections::HashSet;
 use tauri::{AppHandle, Manager};
 
 use crate::configuration::state::ServiceAccess;
 use crate::database;
 use crate::engine::similarity_search_engine::TOPK;
-use crate::repository::activity_log_repository::filter_similar_ids;
 use crate::repository::activity_log_repository::get_activity_full_text_by_id;
 use crate::repository::activity_log_repository::get_additional_ids_from_sql_db;
 use crate::repository::settings_repository::get_setting;
@@ -32,7 +30,7 @@ pub struct Message {
 
 #[derive(Deserialize)]
 struct ClaudeResponse {
-    id: String,
+    // id: String,
     content: Vec<Content>,
     usage: Usage,
 }
@@ -48,7 +46,6 @@ struct Content {
     text: String,
 }
 
-const ANTHROPIC_BASE_URL: &str = "https://api.anthropic.com";
 const ANTHROPIC_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTRHOPIC_MODEL: &str = "claude-3-haiku-20240307";
 const ANTRHOPIC_MAIN_MODEL: &str = "claude-3-5-sonnet-20240620";
@@ -61,7 +58,10 @@ pub async fn send_prompt_to_llm(
     is_first_message: bool,
     combined_activity_text: String,
 ) -> Result<(), String> {
-    let setting = app_handle.db(|db| get_setting(db, "apiKeyClaude").expect("Failed on apiKeyClaude"));
+    let setting =
+        app_handle.db(|db| get_setting(db, "api_key_claude").expect("Failed on api_key_claude"));
+    let setting_openai =
+        app_handle.db(|db| get_setting(db, "api_key_open_ai").expect("Failed on api_key_open_ai"));
 
     let timeout = std::time::Duration::from_secs(60);
     let relevance_client = Client::builder()
@@ -79,22 +79,18 @@ pub async fn send_prompt_to_llm(
             .map(|msg| msg.content.clone())
             .unwrap_or_default();
         info!("User Prompt: {}", user_prompt);
-        let relevant_keywords = match identify_relevant_keywords(
-            &user_prompt,
-            &setting.setting_value,
-        )
-        .await
-        {
-            Ok(keywords) => keywords,
-            Err(err) => {
-                error!(
+        let relevant_keywords =
+            match identify_relevant_keywords(&user_prompt, &setting.setting_value).await {
+                Ok(keywords) => keywords,
+                Err(err) => {
+                    error!(
                     "Keyword extraction failed: {}. Using the entire prompt as fallback keywords.",
                     err
                 );
-                // Use entire prompt as fallback keywords
-                vec![user_prompt.clone()]
-            }
-        };
+                    // Use entire prompt as fallback keywords
+                    vec![user_prompt.clone()]
+                }
+            };
         // Perform similarity search in OasysDB
         info!("Getting database instance");
 
@@ -108,7 +104,7 @@ pub async fn send_prompt_to_llm(
         info!("Initiating similarity search...");
 
         let similar_ids_with_distances = db
-            .top_k(&user_prompt, top_k)
+            .top_k(&user_prompt, top_k, &setting_openai.setting_value)
             .await
             .map_err(|e| format!("Similarity search failed: {}", e))?;
 
@@ -157,9 +153,8 @@ pub async fn send_prompt_to_llm(
                     None
                 });
 
-            if let Some((window_title, text)) = result {
+            if let Some((_window_title, text)) = result {
                 debug!("Document {}: ID: {}", index + 1, document_id);
-                //debug!("Document {}: Content: {}", index + 1, text);
                 context.push_str(&format!(
                     "Document ID: {}\nContent:\n{}\n\n",
                     document_id, text
@@ -383,7 +378,6 @@ Attached is the conversation history for context only. When answering, only give
     let mut attempt = 0;
     let max_retries = 3;
     let mut delay = std::time::Duration::from_secs(1); // Initial delay
-    let timeout = std::time::Duration::from_secs(1);
 
     loop {
         let response = response_client
@@ -524,7 +518,8 @@ pub async fn name_conversation(
     app_handle: tauri::AppHandle,
     user_input: String,
 ) -> Result<String, String> {
-    let setting = app_handle.db(|db| get_setting(db, "apiKeyClaude").expect("Failed on apiKeyClaude"));
+    let setting =
+        app_handle.db(|db| get_setting(db, "api_key_claude").expect("Failed on api_key_claude"));
     let client = Client::new();
 
     let system_prompt = format!(

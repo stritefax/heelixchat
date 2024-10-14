@@ -1,9 +1,8 @@
+use crate::entity::element_details::ElementDetails;
+use log::info;
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
-use std::collections::{HashMap, HashSet};
-use log::info;
-use serde::de::Error;
-use crate::entity::element_details::ElementDetails;
+use std::collections::HashSet;
 
 // Define a struct to represent each action indicator
 #[derive(Serialize, Deserialize)]
@@ -58,7 +57,11 @@ pub fn action_detector(element_details: ElementDetails) -> Result<HashSet<String
     Ok(detected_actions)
 }
 
-fn find_actions_in_element(element: &ElementDetails, parent_name: &str, action_indicators: &std::collections::HashMap<String, ActionIndicator>) -> Vec<String> {
+fn find_actions_in_element(
+    element: &ElementDetails,
+    parent_name: &str,
+    action_indicators: &std::collections::HashMap<String, ActionIndicator>,
+) -> Vec<String> {
     let mut detected_actions = Vec::new();
     let name = &element.name;
     let ctrl_typ = &element.ctrl_typ;
@@ -66,21 +69,37 @@ fn find_actions_in_element(element: &ElementDetails, parent_name: &str, action_i
     let childrens = &element.childrens;
 
     for (action, indicators) in action_indicators {
-        if *ctrl_typ == indicators.ctrl_typ && indicators.sections.iter().any(|section| parent_name.contains(section)) {
-            if indicators.keywords.iter().any(|keyword| text.contains(keyword)) {
+        if *ctrl_typ == indicators.ctrl_typ
+            && indicators
+                .sections
+                .iter()
+                .any(|section| parent_name.contains(section))
+        {
+            if indicators
+                .keywords
+                .iter()
+                .any(|keyword| text.contains(keyword))
+            {
                 detected_actions.push(action.clone());
             }
         }
     }
 
     for child in childrens {
-        detected_actions.extend(find_actions_in_element(child, if name.is_empty() { parent_name } else { name }, action_indicators));
+        detected_actions.extend(find_actions_in_element(
+            child,
+            if name.is_empty() { parent_name } else { name },
+            action_indicators,
+        ));
     }
 
     detected_actions
 }
 
-fn analyze_structured_output(structured_output: &ElementDetails, action_indicators: &std::collections::HashMap<String, ActionIndicator>) -> HashSet<String> {
+fn analyze_structured_output(
+    structured_output: &ElementDetails,
+    action_indicators: &std::collections::HashMap<String, ActionIndicator>,
+) -> HashSet<String> {
     let mut detected_actions = HashSet::new();
     let actions = find_actions_in_element(structured_output, "", action_indicators);
     for action in actions {

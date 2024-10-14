@@ -3,64 +3,6 @@
 version = 3
 
 [[package]]
-name = "Heelix-chat"
-version = "0.9.5"
-dependencies = [
- "accessibility",
- "accessibility-sys",
- "active-win-pos-rs",
- "anyhow",
- "applications",
- "async-openai",
- "async-std",
- "chrono",
- "core-foundation",
- "core-graphics 0.23.2",
- "diesel",
- "diesel_migrations",
- "dissimilar",
- "futures",
- "fuzzy-matcher",
- "hnsw_rs",
- "image 0.25.1",
- "imageproc",
- "itertools 0.13.0",
- "lazy_static",
- "log 0.4.21",
- "openai_api_rust",
- "rdev",
- "regex",
- "reqwest 0.12.4",
- "rusqlite",
- "rusqlite-from-row",
- "rusty-tesseract",
- "screenshots",
- "serde",
- "serde_derive",
- "serde_json",
- "similar",
- "strip-ansi-escapes",
- "strsim",
- "sysinfo",
- "tauri",
- "tauri-build",
- "tauri-plugin-autostart",
- "tauri-plugin-localhost",
- "tauri-plugin-log",
- "tauri-plugin-oauth",
- "tauri-plugin-positioner",
- "tempfile",
- "thiserror",
- "tokio",
- "uiautomation",
- "winapi",
- "winapi-ui-automation",
- "windows 0.56.0",
- "windows-core 0.56.0",
- "winreg 0.52.0",
-]
-
-[[package]]
 name = "ab_glyph"
 version = "0.2.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2589,6 +2531,64 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+
+[[package]]
+name = "heelix_chat"
+version = "0.9.5"
+dependencies = [
+ "accessibility",
+ "accessibility-sys",
+ "active-win-pos-rs",
+ "anyhow",
+ "applications",
+ "async-openai",
+ "async-std",
+ "chrono",
+ "core-foundation",
+ "core-graphics 0.23.2",
+ "diesel",
+ "diesel_migrations",
+ "dissimilar",
+ "futures",
+ "fuzzy-matcher",
+ "hnsw_rs",
+ "image 0.25.1",
+ "imageproc",
+ "itertools 0.13.0",
+ "lazy_static",
+ "log 0.4.21",
+ "openai_api_rust",
+ "rdev",
+ "regex",
+ "reqwest 0.12.4",
+ "rusqlite",
+ "rusqlite-from-row",
+ "rusty-tesseract",
+ "screenshots",
+ "serde",
+ "serde_derive",
+ "serde_json",
+ "similar",
+ "strip-ansi-escapes",
+ "strsim",
+ "sysinfo",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-autostart",
+ "tauri-plugin-localhost",
+ "tauri-plugin-log",
+ "tauri-plugin-oauth",
+ "tauri-plugin-positioner",
+ "tempfile",
+ "thiserror",
+ "tokio",
+ "uiautomation",
+ "winapi",
+ "winapi-ui-automation",
+ "windows 0.56.0",
+ "windows-core 0.56.0",
+ "winreg 0.52.0",
+]
 
 [[package]]
 name = "hermit-abi"

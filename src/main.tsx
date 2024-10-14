@@ -13,10 +13,6 @@ const queryClient = new QueryClient();
 const chakraTheme: ThemeConfig = extendTheme(theme);
 
 attachConsole();
-const printEnv = () => {
-  console.log("ENVIRONMENT:", import.meta.env.VITE_ENVIRONMENT);
-};
-printEnv();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

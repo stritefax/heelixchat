@@ -1,14 +1,11 @@
-use std::error;
 use std::fs::create_dir_all;
 use std::sync::Arc;
 
 use anyhow::{anyhow, bail, Error, Result};
 use hnsw_rs::prelude::*;
-use lazy_static::lazy_static;
-use log::{debug, error, info, trace};
+use log::{debug, error, info};
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::Mutex;
-use tokio::task::block_in_place;
 
 use crate::repository::vector_db_repository::compute_vector_embedding;
 
@@ -33,7 +30,7 @@ fn get_db<'a>() -> Hnsw<'a, f32, DistCosine> {
 enum HnswCommand {
     Save,
     Add(Vec<f32>, usize),
-    Lookup(Vec<f32>, usize, Sender<Result<Vec<(usize,f32)>, Error>>),
+    Lookup(Vec<f32>, usize, Sender<Result<Vec<(usize, f32)>, Error>>),
     Shutdown,
 }
 
@@ -82,12 +79,15 @@ async fn hnsw_thread_worker(
                 std::fs::rename(&save_graph_path, &new_graph_path)?;
             }
             HnswCommand::Add(vector, id) => {
-               // trace!("Adding vector to HNSW index.");
+                // trace!("Adding vector to HNSW index.");
                 db.insert((&vector, id));
             }
             HnswCommand::Lookup(vector, top_k, sender) => {
                 let results = db.search(&vector, top_k, MAX_NB_CONNECTION);
-                let candidates = results.iter().map(|result| (result.d_id, result.distance)).collect::<Vec<_>>();
+                let candidates = results
+                    .iter()
+                    .map(|result| (result.d_id, result.distance))
+                    .collect::<Vec<_>>();
                 sender.send(Ok(candidates)).await?;
             }
             HnswCommand::Shutdown => {
@@ -141,7 +141,7 @@ const IS_TEST: bool = cfg!(test);
 
 const MAX_CHARS: usize = 7900;
 
-async fn get_embedding(text: &str) -> Result<Vec<f32>> {
+async fn get_embedding(text: &str, api_key: &str) -> Result<Vec<f32>> {
     if IS_TEST {
         return Ok(vec![0.0; 512]);
     }
@@ -152,7 +152,7 @@ async fn get_embedding(text: &str) -> Result<Vec<f32>> {
         text
     };
 
-    compute_vector_embedding(truncated_text)
+    compute_vector_embedding(truncated_text, api_key)
         .await
         .map_err(|e| anyhow!("{}", e))
 }
@@ -212,14 +212,14 @@ impl SimilaritySearch {
     }
 
     pub async fn sync(&self) -> Result<()> {
-       info!("Sending HnswCommand::Save");
+        info!("Sending HnswCommand::Save");
         self.1.as_ref().unwrap().send(HnswCommand::Save).await?;
-       info!("Waiting for HnswCommand::Save");
+        info!("Waiting for HnswCommand::Save");
         Ok(())
     }
 
-    pub async fn add(&self, id: i64, text: &str) -> Result<()> {
-        let vector_res = get_embedding(text).await;
+    pub async fn add(&self, id: i64, text: &str, api_key: &str) -> Result<()> {
+        let vector_res = get_embedding(text, api_key).await;
         let vector = match vector_res {
             Ok(v) => v,
             Err(e) => {
@@ -227,7 +227,7 @@ impl SimilaritySearch {
                 return Err(anyhow!("Failed to compute vector embedding: {}", e));
             }
         };
-    
+
         match &self.1 {
             Some(sender) => {
                 if let Err(e) = sender.send(HnswCommand::Add(vector, id as usize)).await {
@@ -243,12 +243,17 @@ impl SimilaritySearch {
         }
     }
 
-    pub async fn top_k(&self, query_text: &str, top_k: usize) -> Result<Vec<(usize, f32)>> {
+    pub async fn top_k(
+        &self,
+        query_text: &str,
+        top_k: usize,
+        api_key: &str,
+    ) -> Result<Vec<(usize, f32)>> {
         info!(
             "Performing similarity search in HNSW Index: Query={}",
             query_text
         );
-        let query_vector_res = get_embedding(query_text).await;
+        let query_vector_res = get_embedding(query_text, api_key).await;
         let query_vector = match query_vector_res {
             Ok(v) => v,
             Err(e) => {
@@ -282,16 +287,6 @@ impl SimilaritySearch {
 
         Ok(candidates)
     }
-
-    pub async fn close(&mut self) -> Result<()> {
-        self.sync().await?;
-        self.1.as_ref().unwrap().send(HnswCommand::Shutdown).await?;
-        let h = self.0.take();
-        if let Some(handle) = h {
-            handle.await?;
-        }
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -306,13 +301,13 @@ mod tests {
         let db_path = temp_dir.path().join("test.db");
         let collection_name = "test_collection";
         let mut index = SimilaritySearch::open(db_path.to_str().unwrap(), collection_name)?;
-        index.add(1, "hello world").await?;
-        let candidates = index.top_k("hello world", 1).await?;
+        index.add(1, "hello world", "").await?;
+        let candidates = index.top_k("hello world", 1, "").await?;
         assert_eq!(candidates, vec![(1, 0.0)]);
         index.close().await?;
         drop(index);
         let index = SimilaritySearch::open(db_path.to_str().unwrap(), collection_name)?;
-        let candidates = index.top_k("hello world", 1).await?;
+        let candidates = index.top_k("hello world", 1, "").await?;
         assert_eq!(candidates, vec![(1, 0.0)]);
         Ok(())
     }

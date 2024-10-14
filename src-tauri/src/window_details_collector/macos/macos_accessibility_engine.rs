@@ -4,34 +4,26 @@ use std::collections::VecDeque;
 use std::ffi::c_void;
 use std::ptr;
 
+use crate::entity::macos_element_details::ElementDetails;
 use accessibility::AXAttribute;
 use accessibility::AXUIElement;
-use accessibility_sys::{AXIsProcessTrustedWithOptions,
-                        AXObserverAddNotification,
-                        AXObserverCreateWithInfoCallback,
-                        AXObserverGetRunLoopSource,
-                        AXObserverRef,
-                        AXUIElementCopyAttributeValue,
-                        AXUIElementCreateApplication,
-                        AXUIElementRef,
-                        AXUIElementSetAttributeValue,
-                        AXUIElementSetMessagingTimeout,
-                        kAXAnnouncementRequestedNotification,
-                        kAXCreatedNotification,
-                        kAXFocusedApplicationAttribute,
-                        kAXFocusedUIElementChangedNotification,
-                        kAXTrustedCheckOptionPrompt,
-                        kAXUIElementDestroyedNotification,
-                        kAXValueChangedNotification};
+use accessibility_sys::{
+    kAXAnnouncementRequestedNotification, kAXCreatedNotification, kAXFocusedApplicationAttribute,
+    kAXFocusedUIElementChangedNotification, kAXTrustedCheckOptionPrompt,
+    kAXUIElementDestroyedNotification, kAXValueChangedNotification, AXIsProcessTrustedWithOptions,
+    AXObserverAddNotification, AXObserverCreateWithInfoCallback, AXObserverGetRunLoopSource,
+    AXObserverRef, AXUIElementCopyAttributeValue, AXUIElementCreateApplication, AXUIElementRef,
+    AXUIElementSetAttributeValue, AXUIElementSetMessagingTimeout,
+};
 use core_foundation::array::CFArray;
 use core_foundation::base::{Boolean, TCFType};
 use core_foundation::boolean::CFBoolean;
 use core_foundation::dictionary::{CFDictionary, CFDictionaryRef};
-use core_foundation::runloop::{CFRunLoopAddSource, CFRunLoopGetCurrent, CFRunLoopRunInMode, kCFRunLoopDefaultMode};
+use core_foundation::runloop::{
+    kCFRunLoopDefaultMode, CFRunLoopAddSource, CFRunLoopGetCurrent, CFRunLoopRunInMode,
+};
 use core_foundation::string::{CFString, CFStringRef};
 use log::{debug, info};
-use crate::entity::macos_element_details::ElementDetails;
-
 
 pub fn by_pid(pid: &str) -> String {
     //unsafe { prompt_for_accessibility_permissions() };
@@ -57,7 +49,9 @@ pub fn observe_by_pid(pid: &str) -> () {
 fn scan_windows(application: &AXUIElement) -> String {
     let mut contents = String::new();
 
-    let windows: CFArray<AXUIElement> = application.attribute(&AXAttribute::windows()).unwrap_or(CFArray::from_CFTypes(&[]));
+    let windows: CFArray<AXUIElement> = application
+        .attribute(&AXAttribute::windows())
+        .unwrap_or(CFArray::from_CFTypes(&[]));
 
     for window in windows.iter() {
         let elem_contents = walk_elements(&window);
@@ -79,7 +73,8 @@ fn walk_elements(element: &AXUIElement) -> String {
             contents.push(' ');
         }
 
-        let children: CFArray<AXUIElement> = current_element.attribute(&AXAttribute::children())
+        let children: CFArray<AXUIElement> = current_element
+            .attribute(&AXAttribute::children())
             .unwrap_or_else(|_| CFArray::from_CFTypes(&[]));
 
         for child in children.iter() {
@@ -124,51 +119,103 @@ fn setup_notifications(pid: i32) -> Result<(), String> {
         if run_loop_source.is_null() {
             return Err("Failed to get run loop source".to_string());
         }
-        CFRunLoopAddSource(CFRunLoopGetCurrent(), run_loop_source, kCFRunLoopDefaultMode);
+        CFRunLoopAddSource(
+            CFRunLoopGetCurrent(),
+            run_loop_source,
+            kCFRunLoopDefaultMode,
+        );
     }
     Ok(())
 }
 
 unsafe fn configure_application(application: AXUIElementRef) {
     AXUIElementSetMessagingTimeout(application, 5.0);
-    AXUIElementCopyAttributeValue(application, CFString::new(kAXFocusedApplicationAttribute).as_concrete_TypeRef(), ptr::null_mut());
-    let _ = AXUIElementSetAttributeValue(application, CFString::new("AXInspectorEnabled").as_concrete_TypeRef(), CFBoolean::true_value().as_CFTypeRef());
-    let _ = AXUIElementSetAttributeValue(application, CFString::new("AXEnhancedUserInterface").as_concrete_TypeRef(), CFBoolean::true_value().as_CFTypeRef());
-    let _ = AXUIElementSetAttributeValue(application, CFString::new("AXManualAccessibility").as_concrete_TypeRef(), CFBoolean::true_value().as_CFTypeRef());
+    AXUIElementCopyAttributeValue(
+        application,
+        CFString::new(kAXFocusedApplicationAttribute).as_concrete_TypeRef(),
+        ptr::null_mut(),
+    );
+    let _ = AXUIElementSetAttributeValue(
+        application,
+        CFString::new("AXInspectorEnabled").as_concrete_TypeRef(),
+        CFBoolean::true_value().as_CFTypeRef(),
+    );
+    let _ = AXUIElementSetAttributeValue(
+        application,
+        CFString::new("AXEnhancedUserInterface").as_concrete_TypeRef(),
+        CFBoolean::true_value().as_CFTypeRef(),
+    );
+    let _ = AXUIElementSetAttributeValue(
+        application,
+        CFString::new("AXManualAccessibility").as_concrete_TypeRef(),
+        CFBoolean::true_value().as_CFTypeRef(),
+    );
 }
 
-unsafe fn add_notification_types_to_observer(observer_ref: AXObserverRef, application: AXUIElementRef) {
+unsafe fn add_notification_types_to_observer(
+    observer_ref: AXObserverRef,
+    application: AXUIElementRef,
+) {
     let element_did_announce = CFString::new(kAXAnnouncementRequestedNotification);
     let element_did_disappear = CFString::new(kAXUIElementDestroyedNotification);
     let element_did_get_focus = CFString::new(kAXFocusedUIElementChangedNotification);
     let element_did_appear = CFString::new(kAXCreatedNotification);
     let value_changed_notification = CFString::new(kAXValueChangedNotification);
 
-    let _ = AXObserverAddNotification(observer_ref, application, element_did_disappear.as_concrete_TypeRef(), ptr::null_mut());
-    let _ = AXObserverAddNotification(observer_ref, application, element_did_get_focus.as_concrete_TypeRef(), ptr::null_mut());
-    let _ = AXObserverAddNotification(observer_ref, application, element_did_announce.as_concrete_TypeRef(), ptr::null_mut());
-    let _ = AXObserverAddNotification(observer_ref, application, element_did_appear.as_concrete_TypeRef(), ptr::null_mut());
-    let _ = AXObserverAddNotification(observer_ref, application, value_changed_notification.as_concrete_TypeRef(), ptr::null_mut());
+    let _ = AXObserverAddNotification(
+        observer_ref,
+        application,
+        element_did_disappear.as_concrete_TypeRef(),
+        ptr::null_mut(),
+    );
+    let _ = AXObserverAddNotification(
+        observer_ref,
+        application,
+        element_did_get_focus.as_concrete_TypeRef(),
+        ptr::null_mut(),
+    );
+    let _ = AXObserverAddNotification(
+        observer_ref,
+        application,
+        element_did_announce.as_concrete_TypeRef(),
+        ptr::null_mut(),
+    );
+    let _ = AXObserverAddNotification(
+        observer_ref,
+        application,
+        element_did_appear.as_concrete_TypeRef(),
+        ptr::null_mut(),
+    );
+    let _ = AXObserverAddNotification(
+        observer_ref,
+        application,
+        value_changed_notification.as_concrete_TypeRef(),
+        ptr::null_mut(),
+    );
 }
 
-extern "C" fn observer_callback(_observer: AXObserverRef,
-                                element_ref: AXUIElementRef,
-                                notification_ref: CFStringRef,
-                                info_ref: CFDictionaryRef,
-                                _refcon: *mut c_void) {
+extern "C" fn observer_callback(
+    _observer: AXObserverRef,
+    element_ref: AXUIElementRef,
+    _notification_ref: CFStringRef,
+    _info_ref: CFDictionaryRef,
+    _refcon: *mut c_void,
+) {
     unsafe {
         AXUIElementSetMessagingTimeout(element_ref, 5.0);
-        AXUIElementCopyAttributeValue(element_ref,
-                                      CFString::new(kAXFocusedApplicationAttribute)
-                                          .as_concrete_TypeRef(),
-                                      ptr::null_mut());
+        AXUIElementCopyAttributeValue(
+            element_ref,
+            CFString::new(kAXFocusedApplicationAttribute).as_concrete_TypeRef(),
+            ptr::null_mut(),
+        );
     }
 }
 
 pub unsafe fn prompt_for_accessibility_permissions() {
-    let options = CFDictionary::from_CFType_pairs(
-        &[(cf_string_ref_to_cf_string_safe(kAXTrustedCheckOptionPrompt),
-           CFBoolean::true_value())]);
+    let options = CFDictionary::from_CFType_pairs(&[(
+        cf_string_ref_to_cf_string_safe(kAXTrustedCheckOptionPrompt),
+        CFBoolean::true_value(),
+    )]);
 
     let trusted = unsafe { AXIsProcessTrustedWithOptions(options.as_concrete_TypeRef()) };
 

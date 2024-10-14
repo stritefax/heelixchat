@@ -81,30 +81,16 @@ export const SettingsScreen: FC = () => {
               </GridItem>
               <GridItem colSpan={1}>
                 <Switch
-                  isChecked={settings.isDevMode}
+                  isChecked={settings.is_dev_mode}
                   onChange={() =>
                     updateSettings({
                       ...settings,
-                      isDevMode: !settings.isDevMode,
+                      is_dev_mode: !settings.is_dev_mode,
                     })
                   }
                 />
               </GridItem>
-              <GridItem colSpan={1}>
-                <Text type="m">Use trello integration POC</Text>
-              </GridItem>
-              <GridItem colSpan={1}>
-                <Switch
-                  isChecked={settings.useTrelloPoc}
-                  onChange={() =>
-                    updateSettings({
-                      ...settings,
-                      useTrelloPoc: !settings.useTrelloPoc,
-                    })
-                  }
-                />
-              </GridItem>
-              {settings.isDevMode && (
+              {settings.is_dev_mode && (
                 <>
                   <GridItem colSpan={1}>
                     <Text type="m">Screenshot interval (seconds)</Text>

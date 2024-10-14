@@ -3,11 +3,10 @@ use serde_derive::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, FromRow, Clone)]
 pub struct Settings {
-    pub isDevMode: bool,
-    pub useTrelloPoc: bool,
+    pub is_dev_mode: bool,
     pub interval: String,
-    pub autoStart: bool,
-    pub apiChoice: String,
-    pub apiKeyClaude: String,
-    pub apiKeyOpenAi: String,
+    pub auto_start: bool,
+    pub api_choice: String,
+    pub api_key_claude: String,
+    pub api_key_open_ai: String,
 }

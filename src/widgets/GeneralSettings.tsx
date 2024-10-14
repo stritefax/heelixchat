@@ -16,23 +16,23 @@ export const GeneralSettings = () => {
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
     const isChecked = event.target.checked;
-    await update({ ...settings, autoStart: isChecked });
+    await update({ ...settings, auto_start: isChecked });
   };
 
   type ApiChoice = "claude" | "openai";
   const handleApiChoiceChange = async (
     event: React.ChangeEvent<HTMLSelectElement>
   ) => {
-    const apiChoice = event.target.value as ApiChoice;
-    await update({ ...settings, apiChoice });
+    const api_choice = event.target.value as ApiChoice;
+    await update({ ...settings, api_choice });
   };
 
   const onChangeApiKey = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (settings.apiChoice === "claude") {
-      update({ ...settings, apiKeyClaude: event.target.value });
+    if (settings.api_choice === "claude") {
+      update({ ...settings, api_key_claude: event.target.value });
     }
-    if (settings.apiChoice === "openai") {
-      update({ ...settings, apiKeyOpenAi: event.target.value });
+    if (settings.api_choice === "openai") {
+      update({ ...settings, api_key_open_ai: event.target.value });
     }
   };
 
@@ -46,7 +46,7 @@ export const GeneralSettings = () => {
             </Text>
             <Switch
               size="md"
-              isChecked={settings.autoStart}
+              isChecked={settings.auto_start}
               onChange={handleAutoStartChange}
             />
           </Flex>
@@ -66,7 +66,7 @@ export const GeneralSettings = () => {
             <Flex flex={2}>
               <Select
                 size="md"
-                value={settings.apiChoice}
+                value={settings.api_choice}
                 onChange={handleApiChoiceChange}
               >
                 <option value="claude">Claude</option>
@@ -83,9 +83,9 @@ export const GeneralSettings = () => {
             <Flex flex={2}>
               <Input
                 value={
-                  settings.apiChoice === "claude"
-                    ? settings.apiKeyClaude
-                    : settings.apiKeyOpenAi
+                  settings.api_choice === "claude"
+                    ? settings.api_key_claude
+                    : settings.api_key_open_ai
                 }
                 onChange={onChangeApiKey}
               />

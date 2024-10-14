@@ -1,15 +1,19 @@
 use std::error::Error;
 
 use chrono::Local;
-use rusqlite::{Connection, named_params};
+use fuzzy_matcher::skim::SkimMatcherV2;
+use fuzzy_matcher::FuzzyMatcher;
+use rusqlite::{named_params, Connection};
 use rusqlite_from_row::FromRow;
 use std::collections::HashSet;
-use fuzzy_matcher::skim::fuzzy_match;
 
-use crate::entity::activity_item::ActivityItem;
 use crate::configuration::database::SyncVectorDatabase;
+use crate::entity::activity_item::ActivityItem;
 
-pub fn save_activity_item(activity_item: &ActivityItem, db: &Connection) -> Result<(), rusqlite::Error> {
+pub fn save_activity_item(
+    activity_item: &ActivityItem,
+    db: &Connection,
+) -> Result<(), rusqlite::Error> {
     let mut statement = db.prepare("INSERT INTO activity_logs
     (timestamp, user_id, ocr_text, window_title,
     window_app_name, os_details, similarity_percentage_to_previous_ocr_text, keypress_count,
@@ -37,20 +41,21 @@ pub fn save_activity_item(activity_item: &ActivityItem, db: &Connection) -> Resu
     Ok(())
 }
 
-
 pub fn save_activity_full_text(
     activity_item: &ActivityItem,
     db: &Connection,
 ) -> Result<Option<i64>, Box<dyn Error>> {
     // First, try to update an existing row in the SQLite database
-    let mut update_statement = db.prepare("
+    let mut update_statement = db.prepare(
+        "
         UPDATE activity_full_text
         SET dateofentry = datetime('now'),
             edited_full_text = @activity_full_text,
             save_count = save_count + 1
         WHERE window_title = @window_title
           AND window_app_name = @window_app_name;
-    ")?;
+    ",
+    )?;
 
     let rows_affected = update_statement.execute(named_params![
         "@window_title": &activity_item.window_title,
@@ -92,6 +97,7 @@ pub async fn save_activity_full_text_into_vector_db(
     oasys_db: &SyncVectorDatabase,
     activity_item: &ActivityItem,
     last_insert_rowid: i64,
+    api_key: &str,
 ) -> Result<(), Box<dyn Error>> {
     let id = last_insert_rowid;
     let max_length = 5000;
@@ -104,21 +110,21 @@ pub async fn save_activity_full_text_into_vector_db(
     // Add the window_title to the beginning and end of the truncated_text
     let amplified_text = format!(
         "Document Title: [{}] {} Document Title: [{}]",
-        activity_item.window_title,
-        truncated_text,
-        activity_item.window_title
+        activity_item.window_title, truncated_text, activity_item.window_title
     );
 
     let mut db_guard = oasys_db.lock().await;
     let db = db_guard.as_mut().expect("Database initialization failed!");
-    db.add(id, &amplified_text).await?;
+    db.add(id, &amplified_text, api_key).await?;
     db.sync().await?;
     Ok(())
 }
 
 pub fn get_all_activity_logs(db: &Connection) -> Result<Vec<ActivityItem>, rusqlite::Error> {
-    let mut statement = db.prepare("SELECT * FROM activity_logs
-    WHERE strftime('%Y-%m-%d', timestamp) = date('now')")?;
+    let mut statement = db.prepare(
+        "SELECT * FROM activity_logs
+    WHERE strftime('%Y-%m-%d', timestamp) = date('now')",
+    )?;
     let mut rows = statement.query([])?;
     let mut activity_logs: Vec<ActivityItem> = Vec::new();
     while let Some(row) = rows.next()? {
@@ -132,7 +138,8 @@ pub fn get_all_activity_logs(db: &Connection) -> Result<Vec<ActivityItem>, rusql
             window_app_name: row.get("window_app_name")?,
             user_id: row.get("user_id")?,
             os_details: row.get("os_details")?,
-            similarity_percentage_to_previous_ocr_text: row.get("similarity_percentage_to_previous_ocr_text")?,
+            similarity_percentage_to_previous_ocr_text: row
+                .get("similarity_percentage_to_previous_ocr_text")?,
             interval_length: row.get("interval_length").unwrap_or(0),
             keypress_count: row.get("keypress_count").unwrap_or(0),
             element_tree_dump: row.get("element_tree_dump")?,
@@ -143,18 +150,24 @@ pub fn get_all_activity_logs(db: &Connection) -> Result<Vec<ActivityItem>, rusql
     Ok(activity_logs)
 }
 
-pub fn get_latest_activity_log_item_with_same_window(db: &Connection,
-                                                     window_title: &str,
-                                                     window_app_name: &str) -> Result<Option<ActivityItem>, rusqlite::Error> {
+pub fn get_latest_activity_log_item_with_same_window(
+    db: &Connection,
+    window_title: &str,
+    window_app_name: &str,
+) -> Result<Option<ActivityItem>, rusqlite::Error> {
     let query = "SELECT * FROM activity_logs
                  WHERE window_title = :window_title
                  AND window_app_name = :window_app_name
                  AND strftime('%Y-%m-%d', timestamp) = date('now')
                  ORDER BY timestamp DESC LIMIT 1";
-    let result = db.query_row(query, named_params! {
-        ":window_title": window_title,
-        ":window_app_name": window_app_name,
-    }, ActivityItem::try_from_row);
+    let result = db.query_row(
+        query,
+        named_params! {
+            ":window_title": window_title,
+            ":window_app_name": window_app_name,
+        },
+        ActivityItem::try_from_row,
+    );
 
     match result {
         Ok(activity_item) => Ok(Some(activity_item)),
@@ -163,31 +176,17 @@ pub fn get_latest_activity_log_item_with_same_window(db: &Connection,
     }
 }
 
-pub fn get_previous_activity(db: &Connection, current_activity: &ActivityItem) -> Result<ActivityItem, rusqlite::Error> {
-    let mut stmt = db.prepare("
-        SELECT * FROM activity_logs
-        WHERE user_id = ?1 AND timestamp < ?2
-        ORDER BY timestamp DESC
-        LIMIT 1
-    ")?;
-
-    let previous_activity = stmt.query_row(
-        &[&current_activity.user_id, &current_activity.timestamp],
-        ActivityItem::try_from_row,
-    ).unwrap_or(get_empty_activity_item());
-
-    Ok(previous_activity)
-}
-
-
 pub fn get_latest_activity_log_item(db: &Connection) -> Result<ActivityItem, rusqlite::Error> {
-    let row = db.query_row(
-        "SELECT * FROM activity_logs WHERE strftime('%Y-%m-%d', timestamp) = date('now')
-    ORDER BY timestamp DESC LIMIT 1", [], ActivityItem::try_from_row)
+    let row = db
+        .query_row(
+            "SELECT * FROM activity_logs WHERE strftime('%Y-%m-%d', timestamp) = date('now')
+    ORDER BY timestamp DESC LIMIT 1",
+            [],
+            ActivityItem::try_from_row,
+        )
         .unwrap_or(get_empty_activity_item());
     return Ok(row);
 }
-
 
 pub fn get_empty_activity_item() -> ActivityItem {
     ActivityItem {
@@ -244,16 +243,17 @@ pub fn get_additional_ids_from_sql_db(
     num_recent_entries: usize,
     keywords: &[String],
 ) -> Result<Vec<i64>, Box<dyn Error>> {
+    let matcher = SkimMatcherV2::default();
     let mut stmt = db.prepare(
         "SELECT id, window_title
          FROM activity_full_text
          ORDER BY dateofentry DESC
-         LIMIT 500"
+         LIMIT 500",
     )?;
-    
-    let rows: Vec<(i64, String)> = stmt.query_map([], |row| {
-        Ok((row.get(0)?, row.get::<_, String>(1)?))
-    })?.collect::<Result<_, _>>()?;
+
+    let rows: Vec<(i64, String)> = stmt
+        .query_map([], |row| Ok((row.get(0)?, row.get::<_, String>(1)?)))?
+        .collect::<Result<_, _>>()?;
 
     let mut top_ids: HashSet<i64> = HashSet::new();
 
@@ -262,7 +262,7 @@ pub fn get_additional_ids_from_sql_db(
         let mut best_score = 0;
 
         for (id, title) in &rows {
-            if let Some(score) = fuzzy_match(&title, keyword) {
+            if let Some(score) = matcher.fuzzy_match(&title, keyword) {
                 if score > best_score {
                     best_score = score;
                     best_match = Some(*id);
@@ -276,10 +276,9 @@ pub fn get_additional_ids_from_sql_db(
     }
 
     // Get the most recent entries
-    let mut recent_entries_stmt = db.prepare(
-        "SELECT id FROM activity_full_text ORDER BY dateofentry DESC LIMIT ?"
-    )?;
-    let mut recent_entries = recent_entries_stmt.query_map([num_recent_entries], |row| row.get(0))?;
+    let mut recent_entries_stmt =
+        db.prepare("SELECT id FROM activity_full_text ORDER BY dateofentry DESC LIMIT ?")?;
+    let recent_entries = recent_entries_stmt.query_map([num_recent_entries], |row| row.get(0))?;
     for entry in recent_entries {
         top_ids.insert(entry?);
     }
@@ -305,10 +304,7 @@ pub fn get_activity_history(
     rows.collect()
 }
 
-pub fn delete_activity(
-    db: &Connection,
-    id: i64,
-) -> Result<bool, rusqlite::Error> {
+pub fn delete_activity(db: &Connection, id: i64) -> Result<bool, rusqlite::Error> {
     let query = "UPDATE activity_full_text 
                  SET dateofentry = '', window_title = '', window_app_name = '',
                      original_full_text = '', edited_full_text = '' 
@@ -316,38 +312,4 @@ pub fn delete_activity(
     let result = db.execute(query, &[&id])?;
 
     Ok(result > 0)
-}
-
-pub fn filter_similar_ids(db: &Connection, similar_ids: Vec<i64>) -> Result<Vec<i64>, rusqlite::Error> {
-    let mut filtered_ids = Vec::new();
-    let mut seen_prefixes = std::collections::HashMap::new();
-
-    for id in similar_ids {
-        let (window_title, date_of_entry): (String, String) = db.query_row(
-            "SELECT window_title, dateofentry FROM activity_full_text WHERE rowid = ?1",
-            [id],
-            |row| Ok((row.get(0)?, row.get(1)?))
-        )?;
-
-        let prefix = window_title.chars().take(15).collect::<String>();
-
-        match seen_prefixes.get(&prefix) {
-            Some((existing_id, existing_date)) => {
-                if date_of_entry > *existing_date {
-                    // Remove the existing ID from filtered_ids
-                    filtered_ids.retain(|&x| x != *existing_id);
-                    // Update seen_prefixes with the new ID and date
-                    seen_prefixes.insert(prefix, (id, date_of_entry));
-                    // Add the new ID to filtered_ids
-                    filtered_ids.push(id);
-                }
-            },
-            None => {
-                seen_prefixes.insert(prefix, (id, date_of_entry));
-                filtered_ids.push(id);
-            }
-        }
-    }
-
-    Ok(filtered_ids)
 }

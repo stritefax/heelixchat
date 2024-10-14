@@ -1,13 +1,10 @@
 use std::error::Error;
-use std::fmt;
-use crate::repository::settings_repository::{get_setting};
 use async_openai::{types::CreateEmbeddingRequestArgs, Client, config::OpenAIConfig};
 
-const API_KEY_OPENAI: &str = "";
 // Correct async function for computing vector embeddings
-pub async fn compute_vector_embedding(text: &str) -> Result<Vec<f32>, Box<dyn Error>> {
-    let config = OpenAIConfig::new()
-    .with_api_key(API_KEY_OPENAI);
+pub async fn compute_vector_embedding(text: &str, api_key: &str) -> Result<Vec<f32>, Box<dyn Error>> {
+    let config: OpenAIConfig = OpenAIConfig::new()
+    .with_api_key(api_key);
 
     let client = Client::with_config(config);
     let request = CreateEmbeddingRequestArgs::default()

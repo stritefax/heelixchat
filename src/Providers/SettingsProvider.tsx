@@ -14,13 +14,12 @@ import {
 } from "./RecordingStateProvider";
 
 export const DEFAULT_SETTINGS: Settings = {
-  isDevMode: false,
-  useTrelloPoc: false,
+  is_dev_mode: false,
   interval: "10",
-  autoStart: false,
-  apiChoice: "claude",
-  apiKeyClaude: "",
-  apiKeyOpenAi: "",
+  auto_start: false,
+  api_choice: "claude",
+  api_key_claude: "",
+  api_key_open_ai: "",
 };
 
 type Update = {
@@ -29,13 +28,12 @@ type Update = {
 
 type ApiChoice = "claude" | "openai";
 export type Settings = {
-  isDevMode: boolean;
+  is_dev_mode: boolean;
   interval: string;
-  useTrelloPoc: boolean;
-  autoStart: boolean;
-  apiChoice: ApiChoice;
-  apiKeyClaude: string;
-  apiKeyOpenAi: string;
+  auto_start: boolean;
+  api_choice: ApiChoice;
+  api_key_claude: string;
+  api_key_open_ai: string;
 };
 
 type SettingsContextType = {
@@ -67,13 +65,12 @@ export const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
     console.log(getSettingOrEmpty(response, "interval"));
     return {
       interval: getSettingOrEmpty(response, "interval") || "20",
-      useTrelloPoc: getSettingOrEmpty(response, "useTrelloPoc") == "true",
-      isDevMode: getSettingOrEmpty(response, "isDevMode") == "true",
-      autoStart: getSettingOrEmpty(response, "autoStart") == "true",
-      apiChoice:
-        (getSettingOrEmpty(response, "apiChoice") as ApiChoice) || "claude",
-      apiKeyClaude: getSettingOrEmpty(response, "apiKeyClaude") || "",
-      apiKeyOpenAi: getSettingOrEmpty(response, "apiKeyOpenAi") || "",
+      is_dev_mode: getSettingOrEmpty(response, "is_dev_mode") == "true",
+      auto_start: getSettingOrEmpty(response, "auto_start") == "true",
+      api_choice:
+        (getSettingOrEmpty(response, "api_choice") as ApiChoice) || "claude",
+      api_key_claude: getSettingOrEmpty(response, "api_key_claude") || "",
+      api_key_open_ai: getSettingOrEmpty(response, "api_key_open_ai") || "",
     };
   };
 
@@ -85,7 +82,7 @@ export const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
         const autoStartEnabled = await isEnabled();
         setSettings({
           ...builtSettings,
-          autoStart: autoStartEnabled,
+          auto_start: autoStartEnabled,
         });
       } else {
         console.error("invoke get_latest_settings Error:", parsed.error);
@@ -94,8 +91,8 @@ export const SettingsProvider: FC<PropsWithChildren> = ({ children }) => {
   }, []);
 
   const update: Update = async (newSettings) => {
-    if (newSettings.autoStart !== settings.autoStart) {
-      if (newSettings.autoStart) {
+    if (newSettings.auto_start !== settings.auto_start) {
+      if (newSettings.auto_start) {
         await enable();
       } else {
         await disable();

@@ -1,4 +1,3 @@
-use rusqlite::Error;
 use rusqlite_from_row::FromRow;
 use serde_derive::{Deserialize, Serialize};
 

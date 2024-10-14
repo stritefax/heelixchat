@@ -1,11 +1,11 @@
 [package]
-name = "Heelix-chat"
+name = "heelix_chat"
 version = "0.9.5"
 description = "Heelix Chat App"
 authors = ["Heelix"]
 license = ""
 repository = ""
-default-run = "Heelix-chat"
+default-run = "heelix_chat"
 edition = "2021"
 rust-version = "1.60"
 

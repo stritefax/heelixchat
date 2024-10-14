@@ -31,24 +31,6 @@ export const Navigation: FC<NavigationProps> = ({ children }) => {
             <UserProfile />
             <RecordingIndicator isRecording={isRecording} />
           </Flex>
-          <Flex p={2} gap={2} justifyContent={"center"} alignItems={"center"}>
-            {/*             <NavLink to="/" tooltip="Home" icon={BarChartIcon} />
-             */}{" "}
-            {/* {settings.isDevMode && (
-              <NavLink
-                to="/activity-log"
-                tooltip="Activity Log"
-                Icon={InfoOutlineIcon}
-              >
-            )} */}
-            {/*             <NavLink active to="/chat" tooltip="Chat" icon={ChatIcon} />
-             */}
-            {/*             <NavLink to="/settings" tooltip="Settings" icon={CogIcon} />
-             */}
-            {/*             <NavIconButton onClick={() => logout()}>
-              <LogoutIcon color={"var(--danger-color)"} />
-            </NavIconButton> */}
-          </Flex>
         </Flex>
       </GridItem>
       <GridItem area={"content"} overflowY={"auto"}>

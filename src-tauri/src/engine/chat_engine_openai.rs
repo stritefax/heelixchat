@@ -1,27 +1,23 @@
-use async_openai::{
-    types::{ ChatCompletionRequestMessage,
-        CreateChatCompletionRequestArgs,
-        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
-        ChatCompletionRequestAssistantMessageArgs,
-    },
-    Client as OpenAIClient, config::OpenAIConfig,
-};
-use futures::StreamExt;
-use log::{debug, error, info};
-use serde::{Deserialize, Serialize};
-use serde_json;
-use tauri::{AppHandle, Manager};
-use std::collections::HashSet;
-use std::collections::HashMap;
-use std::error::Error;
-use std::fmt;
-
 use crate::configuration::state::ServiceAccess;
 use crate::database;
 use crate::engine::similarity_search_engine::TOPK;
 use crate::repository::activity_log_repository::get_activity_full_text_by_id;
 use crate::repository::activity_log_repository::get_additional_ids_from_sql_db;
 use crate::repository::settings_repository::get_setting;
+use async_openai::{
+    config::OpenAIConfig,
+    types::{
+        ChatCompletionRequestSystemMessageArgs, ChatCompletionRequestUserMessageArgs,
+        CreateChatCompletionRequestArgs,
+    },
+    Client as OpenAIClient,
+};
+use futures::StreamExt;
+use log::{debug, error, info};
+use serde::{Deserialize, Serialize};
+use serde_json;
+use std::collections::HashSet;
+use tauri::Manager;
 
 const MODEL_FAST: &str = "gpt-3.5-turbo";
 const MODEL_CHEAP: &str = "gpt-4";
@@ -38,20 +34,26 @@ pub async fn send_prompt_to_openai(
     app_handle: tauri::AppHandle,
     conversation_history: Vec<Message>,
     is_first_message: bool,
-    combined_activity_text: String
+    combined_activity_text: String,
 ) -> Result<(), String> {
-    let setting = app_handle.db(|db| get_setting(db, "apiKeyOpenAi").expect("Failed on apiKeyOpenAi"));
-   
-    let relevance_client = OpenAIClient::with_config(OpenAIConfig::new().with_api_key(&setting.setting_value));
+    let setting =
+        app_handle.db(|db| get_setting(db, "api_key_open_ai").expect("Failed on api_key_open_ai"));
+
+    let relevance_client =
+        OpenAIClient::with_config(OpenAIConfig::new().with_api_key(&setting.setting_value));
     let mut filtered_context = String::new();
     let mut window_titles = Vec::new();
 
     if is_first_message {
         // Perform similarity search and relevance filtering only for the first message
-        let user_prompt = conversation_history.last().map(|msg| msg.content.clone()).unwrap_or_default();
-        info!("User Prompt: {}", user_prompt);
-        let relevant_keywords = identify_relevant_keywords_gpt4(&user_prompt, &setting.setting_value).await?;
+        let user_prompt = conversation_history
+            .last()
+            .map(|msg| msg.content.clone())
+            .unwrap_or_default();
+        info!("User_prompt: {}", user_prompt);
 
+        let relevant_keywords =
+            identify_relevant_keywords_gpt4(&user_prompt, &setting.setting_value).await?;
 
         // Perform similarity search in OasysDB
         info!("Getting database instance");
@@ -66,16 +68,16 @@ pub async fn send_prompt_to_openai(
         info!("Initiating similarity search...");
 
         let similar_ids_with_distances = db
-        .top_k(&user_prompt, top_k)
-        .await
-        .map_err(|e| format!("Similarity search failed: {}", e))?;
-    
+            .top_k(&user_prompt, top_k, &setting.setting_value)
+            .await
+            .map_err(|e| format!("Similarity search failed: {}", e))?;
+
         // Collect the results into a vector that we can use multiple times
         let similar_ids_vec: Vec<(i64, f32)> = similar_ids_with_distances
-        .into_iter()
-        .map(|(id, distance)| (id as i64, distance))
-        .collect();
-      
+            .into_iter()
+            .map(|(id, distance)| (id as i64, distance))
+            .collect();
+
         let similar_ids: Vec<i64> = similar_ids_vec.iter().map(|(id, _)| *id).collect();
 
         let additional_ids = app_handle
@@ -94,10 +96,13 @@ pub async fn send_prompt_to_openai(
 
         for (index, document_id) in all_ids_set.iter().enumerate() {
             let result: Option<(String, String)> = app_handle
-                .db(|db| {
-                    get_activity_full_text_by_id(db, *document_id, Some(1000))
+                .db(|db| get_activity_full_text_by_id(db, *document_id, Some(1000)))
+                .map_err(|e| {
+                    format!(
+                        "Failed to retrieve edited full text for ID {}: {}",
+                        document_id, e
+                    )
                 })
-                .map_err(|e| format!("Failed to retrieve edited full text for ID {}: {}", document_id, e))
                 .unwrap_or_else(|err| {
                     error!("{}", err);
                     None
@@ -106,7 +111,10 @@ pub async fn send_prompt_to_openai(
             if let Some((_window_title, text)) = result {
                 debug!("Document {}: ID: {}", index + 1, document_id);
                 debug!("Document {}: Content: {}", index + 1, text);
-                context.push_str(&format!("Document ID: {}\nContent:\n{}\n\n", document_id, text));
+                context.push_str(&format!(
+                    "Document ID: {}\nContent:\n{}\n\n",
+                    document_id, text
+                ));
             }
         }
 
@@ -189,15 +197,18 @@ pub async fn send_prompt_to_openai(
 
         let relevance_request = CreateChatCompletionRequestArgs::default()
             .model(MODEL_FAST)
-            .messages([ChatCompletionRequestSystemMessageArgs::default()
-                .content(relevance_system_prompt)
-                .build()
-                .map_err(|e| format!("Failed to build system message: {}", e))?
-                .into(), ChatCompletionRequestUserMessageArgs::default()
-                .content(context)
-                .build()
-                .map_err(|e| format!("Failed to build user message: {}", e))?
-                .into()])
+            .messages([
+                ChatCompletionRequestSystemMessageArgs::default()
+                    .content(relevance_system_prompt)
+                    .build()
+                    .map_err(|e| format!("Failed to build system message: {}", e))?
+                    .into(),
+                ChatCompletionRequestUserMessageArgs::default()
+                    .content(context)
+                    .build()
+                    .map_err(|e| format!("Failed to build user message: {}", e))?
+                    .into(),
+            ])
             .build()
             .map_err(|e| format!("Failed to build request: {}", e))?;
 
@@ -224,75 +235,79 @@ pub async fn send_prompt_to_openai(
             // Retrieve the full text of the highly relevant documents
             for document_id in relevant_document_ids {
                 let result: Option<(String, String)> = app_handle
-                    .db(|db| {
-                        get_activity_full_text_by_id(db, document_id, Some(10000))
-                    })
+                    .db(|db| get_activity_full_text_by_id(db, document_id, Some(10000)))
                     .map_err(|e| format!("Failed to retrieve edited full text: {}", e))?;
 
                 if let Some((window_title, text)) = result {
-                    filtered_context.push_str(&format!("Document ID: {}\nContent:\n{}\n\n", document_id, text));
+                    filtered_context.push_str(&format!(
+                        "Document ID: {}\nContent:\n{}\n\n",
+                        document_id, text
+                    ));
                     window_titles.push(window_title);
                 }
             }
 
-            debug!("Filtered context for final response generation: {}", filtered_context);
+            debug!(
+                "Filtered context for final response generation: {}",
+                filtered_context
+            );
         }
     }
 
-        // Prepare the conversation history for the OpenAI API
-        let conversation_history_content = conversation_history
-            .iter()
-            .rev() // Reverse the order of messages
-            .skip(1) // Skip the last user message
-            .rev() // Reverse the order back to original
-            .map(|message| {
-                let role = if message.role == "user" {
-                    "User"
-                } else {
-                    "Assistant"
-                };
-                format!("{}: {}", role, message.content)
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
+    // Prepare the conversation history for the OpenAI API
+    let conversation_history_content = conversation_history
+        .iter()
+        .rev() // Reverse the order of messages
+        .skip(1) // Skip the last user message
+        .rev() // Reverse the order back to original
+        .map(|message| {
+            let role = if message.role == "user" {
+                "User"
+            } else {
+                "Assistant"
+            };
+            format!("{}: {}", role, message.content)
+        })
+        .collect::<Vec<String>>()
+        .join("\n");
 
-        let system_prompt = format!(
+    let system_prompt = format!(
             "You are Heelix chat app that is powered by OpenAI LLM. Heelix chat is developed by Heelix Technologies. Only identify yourself as such.
 
             The following documents were retrieved from the user's device and may help in answering the prompt. Review them carefully to decide if they are relevant. If they are, use them to answer the query. If they are not relevant to the query, ignore them completely when responding and respond as if they were not there without mentioning having received them at all.\n\n{}\n\nAttached is the conversation history for context only. When answering, only give a single assistant response; do not continue the conversation with a user answer:\n{}\n\n",
             filtered_context, conversation_history_content
         );
-        
-        let mut user_message = conversation_history
+
+    let mut user_message = conversation_history
         .last()
         .map(|msg| msg.content.clone())
         .unwrap_or_default();
-    
-        if !combined_activity_text.is_empty() {
-            user_message = format!(
-                "{}The following is additional context from selected activities:\n{}",
-                user_message,
-                combined_activity_text
-            );
-        }
-        let request = CreateChatCompletionRequestArgs::default()
-            .model(MODEL_MAIN)
-            .messages([
-                ChatCompletionRequestSystemMessageArgs::default()
-                    .content(system_prompt)
-                    .build()
-                    .unwrap()
-                    .into(),
-                ChatCompletionRequestUserMessageArgs::default()
-                    .content(user_message)
-                    .build()
-                    .unwrap()
-                    .into(),
-            ])
-            .build()
-            .map_err(|e| format!("Failed to build request: {}", e))?;
 
-    let response_client = OpenAIClient::with_config(OpenAIConfig::new().with_api_key(&setting.setting_value));
+    if !combined_activity_text.is_empty() {
+        user_message = format!(
+            "{}The following is additional context from selected activities:\n{}",
+            user_message, combined_activity_text
+        );
+    }
+    let request = CreateChatCompletionRequestArgs::default()
+        .model(MODEL_MAIN)
+        .messages([
+            ChatCompletionRequestSystemMessageArgs::default()
+                .content(system_prompt)
+                .build()
+                .unwrap()
+                .into(),
+            ChatCompletionRequestUserMessageArgs::default()
+                .content(user_message)
+                .build()
+                .unwrap()
+                .into(),
+        ])
+        .build()
+        .map_err(|e| format!("Failed to build request: {}", e))?;
+
+    let response_client =
+        OpenAIClient::with_config(OpenAIConfig::new().with_api_key(&setting.setting_value));
     let mut stream = response_client
         .chat()
         .create_stream(request)
@@ -300,8 +315,6 @@ pub async fn send_prompt_to_openai(
         .map_err(|e| format!("Failed to create chat completion stream: {}", e))?;
 
     let mut completion = String::new();
-    let mut output_tokens: i64 = 0;
-
 
     while let Some(result) = stream.next().await {
         match result {
@@ -316,7 +329,7 @@ pub async fn send_prompt_to_openai(
                 return Err(format!("Error while streaming response: {}", e));
             }
         }
- 
+
         app_handle
             .get_window("main")
             .expect("Failed to get main window")
@@ -326,29 +339,34 @@ pub async fn send_prompt_to_openai(
         app_handle
             .get_window("main")
             .expect("Failed to get main window")
-            .emit("window_titles", serde_json::to_string(&window_titles).unwrap())
+            .emit(
+                "window_titles",
+                serde_json::to_string(&window_titles).unwrap(),
+            )
             .map_err(|e| format!("Failed to emit window titles: {}", e))?;
     }
 
-            // Estimate token usage based on word count
-            let word_count = completion.split_whitespace().count();
-            let output_tokens = (word_count as f64 * 0.75) as i64;
+    // Estimate token usage based on word count
+    let word_count = completion.split_whitespace().count();
+    let output_tokens = (word_count as f64 * 0.75) as i64;
 
-            info!("Estimated tokens used: {}", output_tokens);
+    info!("Estimated tokens used: {}", output_tokens);
 
-            // Emit the estimated token usage to the frontend
-            app_handle
-                .get_window("main")
-                .expect("Failed to get main window")
-                .emit("output_tokens", output_tokens)
-                .map_err(|e| format!("Failed to emit estimated tokens: {}", e))?;
-
+    // Emit the estimated token usage to the frontend
+    app_handle
+        .get_window("main")
+        .expect("Failed to get main window")
+        .emit("output_tokens", output_tokens)
+        .map_err(|e| format!("Failed to emit estimated tokens: {}", e))?;
 
     info!("Result from OpenAI: {}", completion);
     Ok(())
 }
 
-pub async fn identify_relevant_keywords_gpt4(prompt: &str, api_key: &str) -> Result<Vec<String>, String> {
+pub async fn identify_relevant_keywords_gpt4(
+    prompt: &str,
+    api_key: &str,
+) -> Result<Vec<String>, String> {
     let client = OpenAIClient::with_config(OpenAIConfig::new().with_api_key(api_key));
     let system_prompt = r#"You are a Keyword Extraction Specialist. Your task is to extract only the keywords that MUST be present in the relevant file based on the user search, including file names, proper names (client names, correspondent names), function names. These keywords should be as close as possible to the user's original words and should not include any additional or expanded terms. Your output should consist of a list of three or fewer prioritized keywords in JSON format, closely following user semantics.
 Examples:
@@ -411,4 +429,3 @@ Output the relevant keywords as a JSON array of strings, with absolutely no othe
         Err("No choices in the response".to_string())
     }
 }
-

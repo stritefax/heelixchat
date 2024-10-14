@@ -142,15 +142,15 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
 
   type ApiChoice = "claude" | "openai";
   const handleApiChoiceChange = (value: ApiChoice) => {
-    update({ ...settings, apiChoice: value });
+    update({ ...settings, api_choice: value });
   };
 
   const onChangeApiKey = (value: string) => {
-    if (settings.apiChoice === "claude") {
-      update({ ...settings, apiKeyClaude: value });
+    if (settings.api_choice === "claude") {
+      update({ ...settings, api_key_claude: value });
     }
-    if (settings.apiChoice === "openai") {
-      update({ ...settings, apiKeyOpenAi: value });
+    if (settings.api_choice === "openai") {
+      update({ ...settings, api_key_open_ai: value });
     }
   };
 
@@ -158,8 +158,8 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
     if (
       step &&
       steps.length - 1 &&
-      !settings.apiKeyClaude &&
-      !settings.apiKeyOpenAi
+      !settings.api_key_claude &&
+      !settings.api_key_open_ai
     ) {
       console.error("API key not set");
     }
@@ -209,7 +209,7 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
               <KeyContainer>
                 <Select
                   size="md"
-                  value={settings.apiChoice}
+                  value={settings.api_choice}
                   onChange={(event) =>
                     handleApiChoiceChange(event.target.value as ApiChoice)
                   }
@@ -222,9 +222,9 @@ export const OnboardingScreen: React.FC<OnboardingScreenProps> = ({
                   placeholder="Api key"
                   style={{ color: "white" }}
                   value={
-                    settings.apiChoice === "claude"
-                      ? settings.apiKeyClaude
-                      : settings.apiKeyOpenAi
+                    settings.api_choice === "claude"
+                      ? settings.api_key_claude
+                      : settings.api_key_open_ai
                   }
                   onChange={(event) => onChangeApiKey(event.target.value)}
                   _placeholder={{ opacity: 0.8, color: "inherit" }}

@@ -92,17 +92,6 @@ export const RecordingStateProvider: FC<PropsWithChildren> = ({ children }) => {
       unlisten.then((f) => f());
     };
   }, []);
-  /*
-   // ===== Try to sync out of sync local activity logs
-   useEffect(() => {
-    invoke("sync_local_data", { variant: import.meta.env.VITE_VARIANT,
-     environment: import.meta.env.VITE_ENVIRONMENT }).then();
-    const interval = setInterval(() => {
-      invoke("sync_local_data", { variant: import.meta.env.VITE_VARIANT,
-     environment: import.meta.env.VITE_ENVIRONMENT }).then();
-    }, 2 * 60 * 1000); // 2 minutes
-  }, []);
-   */
 
   const toggleRecording: ToggleRecording = (newIsRecording) => {
     if (newIsRecording) {
@@ -123,7 +112,6 @@ export const RecordingStateProvider: FC<PropsWithChildren> = ({ children }) => {
     invoke("record_single_activity", {
       user: user.id,
       variant: import.meta.env.VITE_VARIANT,
-      environment: import.meta.env.VITE_ENVIRONMENT,
     }).then((response) => {
       let activityLog = buildActivityLogFromResponse(response);
       setActivityLog(activityLog);

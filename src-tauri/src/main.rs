@@ -2,20 +2,17 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::env;
-use std::error::Error;
 use std::sync::Arc;
 
-use async_std::stream::StreamExt;
 use lazy_static::lazy_static;
 use log::info;
 use rusqlite::Connection;
 use serde_derive::Serialize;
 use tauri::utils::config::AppUrl;
 use tauri::SystemTray;
-use tauri::{App, AppHandle, Manager, State, SystemTrayEvent, WindowBuilder, WindowUrl};
+use tauri::{AppHandle, Manager, State, SystemTrayEvent, WindowUrl};
 use tauri::{CustomMenuItem, SystemTrayMenu};
 use tauri_plugin_log::LogTarget;
-use tauri_plugin_positioner::{Position, WindowExt};
 use tokio::sync::Mutex;
 
 use configuration::settings::Settings;
@@ -27,8 +24,6 @@ use crate::configuration::state::{AppState, ServiceAccess};
 use crate::engine::chat_engine::{name_conversation, send_prompt_to_llm};
 use crate::engine::chat_engine_openai::send_prompt_to_openai;
 use crate::engine::clean_up_engine::clean_up;
-//#[cfg(not(target_os = "linux"))]
-//use crate::engine::keypress_listener_engine;
 use crate::engine::monitoring_engine;
 use crate::engine::similarity_search_engine::SyncSimilaritySearch;
 use crate::entity::activity_item::ActivityItem;
@@ -37,7 +32,6 @@ use crate::entity::permission::Permission;
 use crate::entity::setting::Setting;
 use crate::permissions::permission_engine::init_permissions;
 use crate::repository::activity_log_repository;
-use crate::repository::activity_log_repository::{get_empty_activity_item, get_previous_activity};
 use crate::repository::chat_db_repository;
 use crate::repository::permissions_repository::{get_permissions, update_permission};
 use crate::repository::settings_repository::{get_setting, get_settings, insert_or_update_setting};
@@ -130,7 +124,6 @@ async fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             refresh_activity_log,
-            sync_local_data,
             update_settings,
             get_latest_settings,
             send_prompt_to_llm,
@@ -191,7 +184,6 @@ async fn main() {
             );
             clean_up(app_handle.path_resolver().app_data_dir().unwrap());
             setup_keypress_listener(&app_handle);
-            // setup_main_window(window_url, app)?;
             init_app_permissions(app_handle);
             Ok(())
         })
@@ -210,50 +202,12 @@ fn build_system_tray() -> SystemTray {
     SystemTray::new().with_menu(tray_menu)
 }
 
-fn setup_main_window(window_url: WindowUrl, app: &mut App) -> Result<(), Box<dyn Error>> {
-    const WIDTH: f64 = 1200f64;
-    const HEIGHT: f64 = 800f64;
-    const FULL_SCREEN: bool = false;
-
-    let window = WindowBuilder::new(app, "localhost".to_string(), window_url)
-        .title("Heelix Chat")
-        .fullscreen(FULL_SCREEN)
-        .inner_size(WIDTH, HEIGHT)
-        .build()?;
-    window.move_window(Position::Center).unwrap();
-
-    #[cfg(any(target_os = "windows"))]
-    window.move_window(Position::BottomRight).unwrap();
-
-    #[cfg(not(target_os = "windows"))]
-    window.move_window(Position::TopRight).unwrap();
-
-    if USE_LOCALHOST_SERVER == true {
-        app.get_window("main")
-            .unwrap()
-            .hide()
-            .expect("failed to hide localhost window");
-    }
-    Ok(())
-}
-
 fn setup_keypress_listener(app_handle: &AppHandle) {
     let app_state: State<AppState> = app_handle.state();
 
-    let sqlite_path = app_handle
-        .path_resolver()
-        .app_data_dir()
-        .expect("The app data directory should exist.")
-        .to_str()
-        .unwrap()
-        .to_owned()
-        + "/heelixchat.sqlite";
     let db: Connection =
         database::initialize_database(&app_handle).expect("Database initialization failed!");
     *app_state.db.lock().unwrap() = Some(db);
-
-    // #[cfg(not(target_os = "linux"))]
-    //  keypress_listener_engine::listen_to_events(sqlite_path.clone());
 }
 
 #[tauri::command]
@@ -282,60 +236,44 @@ async fn update_settings(app_handle: AppHandle, settings: Settings) {
         insert_or_update_setting(
             db,
             Setting {
-                setting_key: String::from("isDevMode"),
-                setting_value: format!("{}", settings.isDevMode),
+                setting_key: String::from("is_dev_mode"),
+                setting_value: format!("{}", settings.is_dev_mode),
             },
         )
         .unwrap();
         insert_or_update_setting(
             db,
             Setting {
-                setting_key: String::from("useTrelloPoc"),
-                setting_value: format!("{}", settings.useTrelloPoc),
+                setting_key: String::from("auto_start"),
+                setting_value: format!("{}", settings.auto_start),
             },
         )
         .unwrap();
         insert_or_update_setting(
             db,
             Setting {
-                setting_key: String::from("autoStart"),
-                setting_value: format!("{}", settings.autoStart),
+                setting_key: String::from("api_choice"),
+                setting_value: format!("{}", settings.api_choice),
             },
         )
         .unwrap();
         insert_or_update_setting(
             db,
             Setting {
-                setting_key: String::from("apiChoice"),
-                setting_value: format!("{}", settings.apiChoice),
+                setting_key: String::from("api_key_claude"),
+                setting_value: format!("{}", settings.api_key_claude),
             },
         )
         .unwrap();
         insert_or_update_setting(
             db,
             Setting {
-                setting_key: String::from("apiKeyClaude"),
-                setting_value: format!("{}", settings.apiKeyClaude),
-            },
-        )
-        .unwrap();
-        insert_or_update_setting(
-            db,
-            Setting {
-                setting_key: String::from("apiKeyOpenAi"),
-                setting_value: format!("{}", settings.apiKeyOpenAi),
+                setting_key: String::from("api_key_open_ai"),
+                setting_value: format!("{}", settings.api_key_open_ai),
             },
         )
         .unwrap();
     });
-}
-
-#[tauri::command]
-async fn sync_local_data(
-    app_handle: AppHandle,
-    environment: &str,
-) -> Result<Vec<ActivityItem>, ()> {
-    return Ok(vec![]);
 }
 
 #[tauri::command]
@@ -388,6 +326,7 @@ async fn record_single_activity(
         .db(|db| activity_log_repository::save_activity_full_text(&activity_item.clone(), db))
         .expect("Failed to save activity full text");
 
+    let settings =   app_handle.db(|db| get_setting(db, "api_key_open_ai").expect("Failed on api_key_open_ai"));
     match last_insert_rowid {
         Some(rowid) => {
             info!("Getting ready to add record to OasysDB, row={}", rowid);
@@ -398,15 +337,13 @@ async fn record_single_activity(
                 &mut oasys_db,
                 &activity_item,
                 rowid,
+                &settings.setting_value
             )
             .await
             .unwrap_or(());
         }
         None => info!("No last insert rowid available"),
     }
-    let previous_activity = app_handle
-        .db(|db| get_previous_activity(db, &activity_item))
-        .unwrap();
 
     return Ok(get_latest_activity_log(app_handle.clone()));
 }
