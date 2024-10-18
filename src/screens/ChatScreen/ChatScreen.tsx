@@ -17,6 +17,7 @@ import {
   IconButton,
   Wrap,
   WrapItem,
+  useToast,
 } from "@chakra-ui/react";
 import { Text, Title, NavButton } from "@heelix-app/design";
 import logoBlack from "@heelix-app/design/logo/logo-black.png";
@@ -167,6 +168,7 @@ const ActivityPreview = styled.div`
 
 export const ChatScreen: FC = () => {
   const [userInput, setUserInput] = useState("");
+  const toast = useToast();
   const [chats, setChats] = useState<Chat[]>([]);
   const [selectedChatId, setSelectedChatId] = useState<number>();
   const [dialogue, setDialogue] = useState<StoredMessage[]>([]);
@@ -259,20 +261,6 @@ export const ChatScreen: FC = () => {
     };
   }, []);
 
-  const renderSettingsContent = () => {
-    switch (activeSettingsCategory) {
-      case "general":
-        return <GeneralSettings />;
-      case "privacy":
-        return <PrivacySettings />;
-      case "history":
-        return <HistorySettings />;
-
-      default:
-        return null;
-    }
-  };
-
   const fetchChats = async () => {
     try {
       messageRef.current = null;
@@ -342,7 +330,10 @@ export const ChatScreen: FC = () => {
 
   const generateName = async (chatId: number, userInput: string) => {
     try {
-      const name = await invoke<string>("name_conversation", { userInput });
+      const name =
+        settings.api_choice === "openai"
+          ? await invoke<string>("generate_conversation_name", { userInput })
+          : await invoke<string>("name_conversation", { userInput });
       await invoke<boolean>("update_chat_name", { chatId, name });
       setChats((prevChats) =>
         prevChats.map((chat) => (chat.id === chatId ? { ...chat, name } : chat))
@@ -484,6 +475,34 @@ export const ChatScreen: FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (settings.api_choice === "openai" && !settings.api_key_open_ai) {
+      toast({
+        title: "Api key not provided",
+        description:
+          "Provide the necessary keys in the Settings > General to continue",
+        status: "error",
+        duration: 9000,
+        isClosable: true,
+      });
+      onSettingsOpen();
+      return;
+    }
+    if (
+      (settings.api_choice === "claude" && !settings.api_key_claude) ||
+      !settings.api_key_open_ai
+    ) {
+      toast({
+        title: "Api keys not provided",
+        description:
+          "Claude doesn't yet provide vector embedding due to this limitation both claude and Chat GPT keys need to be provided. Provide the necessary keys in the Settings > General to continue.",
+        status: "error",
+        duration: 9000,
+        isClosable: true,
+      });
+      onSettingsOpen();
+      return;
+    }
+
     setIsLoading(true);
     setIsGenerating(true);
     setFirstTokenReceived(false);

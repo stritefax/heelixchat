@@ -22,7 +22,7 @@ use crate::configuration::database;
 use crate::configuration::database::drop_database_handle;
 use crate::configuration::state::{AppState, ServiceAccess};
 use crate::engine::chat_engine::{name_conversation, send_prompt_to_llm};
-use crate::engine::chat_engine_openai::send_prompt_to_openai;
+use crate::engine::chat_engine_openai::{generate_conversation_name, send_prompt_to_openai};
 use crate::engine::clean_up_engine::clean_up;
 use crate::engine::monitoring_engine;
 use crate::engine::similarity_search_engine::SyncSimilaritySearch;
@@ -128,6 +128,7 @@ async fn main() {
             get_latest_settings,
             send_prompt_to_llm,
             send_prompt_to_openai,
+            generate_conversation_name,
             record_single_activity,
             name_conversation,
             create_chat,
@@ -326,7 +327,8 @@ async fn record_single_activity(
         .db(|db| activity_log_repository::save_activity_full_text(&activity_item.clone(), db))
         .expect("Failed to save activity full text");
 
-    let settings =   app_handle.db(|db| get_setting(db, "api_key_open_ai").expect("Failed on api_key_open_ai"));
+    let settings =
+        app_handle.db(|db| get_setting(db, "api_key_open_ai").expect("Failed on api_key_open_ai"));
     match last_insert_rowid {
         Some(rowid) => {
             info!("Getting ready to add record to OasysDB, row={}", rowid);
@@ -337,7 +339,7 @@ async fn record_single_activity(
                 &mut oasys_db,
                 &activity_item,
                 rowid,
-                &settings.setting_value
+                &settings.setting_value,
             )
             .await
             .unwrap_or(());

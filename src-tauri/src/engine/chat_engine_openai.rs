@@ -429,3 +429,63 @@ Output the relevant keywords as a JSON array of strings, with absolutely no othe
         Err("No choices in the response".to_string())
     }
 }
+
+#[tauri::command]
+pub async fn generate_conversation_name(
+    app_handle: tauri::AppHandle,
+    user_input: &str,
+) -> Result<String, String> {
+    // Fetch the OpenAI API key from your settings
+    let setting =
+        app_handle.db(|db| get_setting(db, "api_key_open_ai").expect("Failed on api_key_open_ai"));
+
+    // Initialize the OpenAI client with the API key
+    let config = OpenAIConfig::new().with_api_key(&setting.setting_value);
+    let client = OpenAIClient::with_config(config);
+
+    // Define the system prompt to guide the model
+    let system_prompt = format!(
+        "Name the conversation based on the user input. Use a total of 18 characters or less, without quotation marks. Use proper English, don't skip spaces between words. You only need to answer with the name. The following is the user input: \n\n{}\n\n.:",
+        user_input
+    );
+
+    // Create a chat completion request with the system message and user input
+    let request = CreateChatCompletionRequestArgs::default()
+        .model(MODEL_FAST) // Specify the model, you can use "gpt-4" if needed
+        .max_tokens(20u32) // Limit the response to 20 tokens
+        .messages(vec![
+            // Use the correct message type for the system message
+            ChatCompletionRequestSystemMessageArgs::default()
+                .content(system_prompt)
+                .build()
+                .unwrap()
+                .into(), // Convert to correct type
+            // Use the correct message type for the user message
+            ChatCompletionRequestUserMessageArgs::default()
+                .content(
+                    "Please generate a concise name for the conversation based on the user input.",
+                )
+                .build()
+                .unwrap()
+                .into(), // Convert to correct type
+        ])
+        .build()
+        .map_err(|e| format!("generate_conversation_name request_error: {}", e))?; // Handle request building error
+
+    // Send the request to OpenAI and await the response, converting any OpenAIError to a String
+    let response = client
+        .chat()
+        .create(request)
+        .await
+        .map_err(|e| format!("generate_conversation_name OpenAI API request failed: {}", e))?;
+
+    // Extract the first message content safely from the response
+    let generated_name = response.choices[0]
+        .message
+        .content
+        .as_ref() // Convert Option<String> to Option<&String>
+        .map(|s| s.trim().to_string()) // Trim and convert to String if Some
+        .unwrap_or_else(|| "Unnamed Conversation".to_string()); // Provide fallback if None
+
+    Ok(generated_name)
+}
