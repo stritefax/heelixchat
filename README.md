@@ -1,5 +1,8 @@
 # Heelix Chatbot
 
+https://github.com/user-attachments/assets/b3c46810-9598-4af5-901b-9c775915ddbc
+
+
 The open-source chatbot making RAG seamless. 
 
 Heelix is a desktop chat app written in Rust and Tauri, automatically augmenting LLM queries using text data from your machine collected via accessibility API and OCR. 
