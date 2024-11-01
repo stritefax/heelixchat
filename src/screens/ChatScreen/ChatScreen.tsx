@@ -2,7 +2,6 @@ import { type FC, useState, useEffect, useRef, useMemo, Fragment } from "react";
 import { type } from "@tauri-apps/api/os";
 import {
   Flex,
-  Text as ChakraText,
   Spinner,
   Drawer,
   DrawerBody,
@@ -10,9 +9,7 @@ import {
   DrawerOverlay,
   DrawerContent,
   DrawerCloseButton,
-  Image,
   useDisclosure,
-  Tooltip,
   Box,
   IconButton,
   Wrap,
@@ -20,13 +17,13 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { Text, Title, NavButton } from "@heelix-app/design";
-import logoBlack from "@heelix-app/design/logo/logo-black.png";
 import styled from "styled-components";
 import { invoke } from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
 import type { StoredMessage, Chat } from "./types";
 import { debounce } from "lodash";
 import { FileText, X } from "lucide-react";
+import { ScreenContainer } from "@/components/layout";
 import {
   UserMessage,
   AssistantMessage,
@@ -35,31 +32,10 @@ import {
   ChatHistoryList,
   SettingsModal,
   SelectActivityModal,
+  NewConversationMessage,
 } from "./components";
-import { PrivacySettings } from "../../widgets";
-import { HistorySettings } from "../../widgets";
-import { GeneralSettings } from "../../widgets";
 import { useGlobalSettings } from "../../Providers/SettingsProvider";
-
-const ScreenContainer = styled.div`
-  display: flex;
-  height: 100%;
-  align-items: center;
-  overflow-y: auto;
-  background: var(--card-content-background);
-  flex-direction: column;
-  position: relative;
-  font-weight: normal;
-`;
-
-const NewConversationContainer = styled.div`
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-l);
-  justify-content: center;
-`;
+import { DocumentFootnote } from "./components";
 
 const ReponsiveContainer = styled.div`
   display: grid;
@@ -125,21 +101,6 @@ const MessagesContainer = styled.div`
   gap: var(--space-xl);
   overflow-anchor: none;
 `;
-
-const DocumentFootnote = ({ windowTitles }: { windowTitles: string[] }) => {
-  return (
-    <Box display="inline" ml={1}>
-      {windowTitles.map((title, index) => (
-        <Tooltip key={index} label={title}>
-          <ChakraText as="sup" fontSize="xs" color="blue.500" cursor="pointer">
-            {index + 1}
-            {index < windowTitles.length - 1 && ","}
-          </ChakraText>
-        </Tooltip>
-      ))}
-    </Box>
-  );
-};
 
 const ActivityIcon = styled.div`
   width: 40px;
@@ -710,12 +671,7 @@ export const ChatScreen: FC = () => {
         </HistoryContainer>
         <ChatContainer>
           {dialogue.length === 0 && !isLoadingExistingChat ? (
-            <NewConversationContainer>
-              <Image width="40px" height="40px" src={logoBlack} />
-              <Text type="m" bold>
-                What can I help you with?
-              </Text>
-            </NewConversationContainer>
+            <NewConversationMessage />
           ) : (
             <MessagesScrollContainer ref={messageContainerRef}>
               <MessagesContainer>

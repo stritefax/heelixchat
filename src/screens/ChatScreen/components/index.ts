@@ -4,3 +4,5 @@ export { ChatInput } from "./ChatInput";
 export { ChatHistoryList } from "./ChatHistoryList";
 export { SettingsModal } from "./SettingsModal";
 export { SelectActivityModal } from "./SelectActivityModal";
+export { DocumentFootnote } from "./DocumentFootnote";
+export { NewConversationMessage } from "./NewConversationMessage";

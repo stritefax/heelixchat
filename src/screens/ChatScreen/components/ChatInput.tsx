@@ -1,19 +1,12 @@
-import  {
+import {
   type FC,
   type ChangeEvent,
   type KeyboardEvent,
   useRef,
   useEffect,
 } from "react";
-import styled from "styled-components";
-import {
-  Textarea,
-  Button,
-  Flex,
-  IconButton,
-  Tooltip,
-} from '@chakra-ui/react';
-import { PaperclipIcon } from 'lucide-react';
+import { Textarea, Button, Flex, IconButton, Tooltip } from "@chakra-ui/react";
+import { PaperclipIcon } from "lucide-react";
 
 type ChatInputProps = {
   value: string;
@@ -38,9 +31,10 @@ export const ChatInput: FC<ChatInputProps> = ({
 
   const handleInput = () => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = "40px"; // Reset to initial height 
+      textareaRef.current.style.height = "40px"; // Reset to initial height
       const scrollHeight = textareaRef.current.scrollHeight;
-      textareaRef.current.style.height = scrollHeight > 40 ? `${scrollHeight}px` : "40px";
+      textareaRef.current.style.height =
+        scrollHeight > 40 ? `${scrollHeight}px` : "40px";
     }
   };
 
@@ -62,7 +56,6 @@ export const ChatInput: FC<ChatInputProps> = ({
         e.preventDefault();
         onSubmit();
       }}
-
       alignItems="flex-end"
       width="100%"
       maxWidth="var(--breakpoint-medium)"
