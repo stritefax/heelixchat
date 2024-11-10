@@ -6,8 +6,10 @@ import { ChakraProvider } from "@chakra-ui/react";
 import { extendTheme, type ThemeConfig } from "@chakra-ui/react";
 import { attachConsole } from "tauri-plugin-log-api";
 import "@heelix-app/design/index.css";
-import { ChatEntry } from "./Entry";
+import { App } from "./App";
 import { theme } from "./theme";
+import { SettingsProvider } from "./Providers/SettingsProvider";
+import { RecordingStateProvider } from "./Providers/RecordingStateProvider";
 
 const queryClient = new QueryClient();
 const chakraTheme: ThemeConfig = extendTheme(theme);
@@ -19,7 +21,11 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
     <QueryClientProvider client={queryClient}>
       <ThemeProvider theme={theme}>
         <ChakraProvider theme={chakraTheme}>
-          <ChatEntry />
+          <SettingsProvider>
+            <RecordingStateProvider>
+              <App />
+            </RecordingStateProvider>
+          </SettingsProvider>
         </ChakraProvider>
       </ThemeProvider>
     </QueryClientProvider>

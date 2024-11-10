@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { invoke } from "@tauri-apps/api/tauri";
 import { Title, Text } from "@heelix-app/design";
 import { Table, Thead, Tbody, Tr, Th, Td, IconButton } from "@chakra-ui/react";
-import { DeleteIcon } from "@chakra-ui/icons";
+import { FaRegTrashAlt } from "react-icons/fa";
 
 const ContentContainer = styled.div`
   display: flex;
@@ -79,10 +79,11 @@ const ActivityHistoryList: FC<ActivityHistoryListProps> = ({
               <Td>
                 <IconButton
                   aria-label="Delete"
-                  icon={<DeleteIcon />}
                   size="sm"
                   onClick={() => onDelete(id)}
-                />
+                >
+                  <FaRegTrashAlt />
+                </IconButton>
               </Td>
             </Tr>
           ))}

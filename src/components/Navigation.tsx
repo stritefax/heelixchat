@@ -34,14 +34,6 @@ export const Navigation: FC<NavigationProps> = ({ children }) => {
       <GridItem area={"content"} overflowY={"auto"}>
         {children}
       </GridItem>
-      {/* <GridItem
-        area={"footer"}
-        bg="white"
-        borderTop={"1px solid"}
-        borderTopColor={"gray.300"}
-      >
-        <Footer />
-      </GridItem> */}
     </Grid>
   );
 };

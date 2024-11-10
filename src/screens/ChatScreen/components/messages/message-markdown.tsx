@@ -1,7 +1,12 @@
 import React, { FC } from "react";
-import remarkGfm from "remark-gfm";
-import remarkMath from "remark-math";
-import { Box, UnorderedList, OrderedList, ListItem, Heading, Text } from "@chakra-ui/react";
+import {
+  Box,
+  OrderedList,
+  UnorderedList,
+  ListItem,
+  Heading,
+  Text,
+} from "@chakra-ui/react";
 import { MessageMarkdownMemoized } from "./message-markdown-memoized";
 import { MessageCodeBlock } from "./message-codeblock";
 
@@ -10,7 +15,10 @@ interface MessageMarkdownProps {
   textColor?: string;
 }
 
-export const MessageMarkdown: FC<MessageMarkdownProps> = ({ content, textColor = "black" }) => {
+export const MessageMarkdown: FC<MessageMarkdownProps> = ({
+  content,
+  textColor = "black",
+}) => {
   return (
     <MessageMarkdownMemoized
       components={{
@@ -37,7 +45,8 @@ export const MessageMarkdown: FC<MessageMarkdownProps> = ({ content, textColor =
         },
         li({ children }) {
           return <ListItem>{children}</ListItem>;
-        },        h1({ children }) {
+        },
+        h1({ children }) {
           return (
             <Heading as="h1" size="md" mb={4}>
               {children}
@@ -64,17 +73,20 @@ export const MessageMarkdown: FC<MessageMarkdownProps> = ({ content, textColor =
           const firstChildAsString = React.isValidElement(firstChild)
             ? (firstChild as React.ReactElement).props.children
             : firstChild;
-          
+
           if (firstChildAsString === "▍") {
             return <span className="mt-1 animate-pulse cursor-default">▍</span>;
           }
-          
+
           if (typeof firstChildAsString === "string") {
             childArray[0] = firstChildAsString.replace("`▍`", "▍");
           }
-          
+
           const match = /language-(\w+)/.exec(className || "");
-          if (typeof firstChildAsString === "string" && !firstChildAsString.includes("\n")) {
+          if (
+            typeof firstChildAsString === "string" &&
+            !firstChildAsString.includes("\n")
+          ) {
             return (
               <code className={className} {...props}>
                 {childArray}

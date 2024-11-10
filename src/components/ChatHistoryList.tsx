@@ -1,9 +1,8 @@
 import { type FC, useRef, useEffect } from "react";
 import { Box, IconButton, List, ListItem, Flex } from "@chakra-ui/react";
 import { Text } from "@heelix-app/design";
-import styled from "styled-components";
-import { IconTrash } from "@tabler/icons-react";
-import type { Chat } from "../types";
+import { FaRegTrashAlt } from "react-icons/fa";
+import type { Chat } from "../screens/ChatScreen/types";
 
 type ChatHistoryListProps = {
   chatHistory: Chat[];
@@ -65,7 +64,6 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
             </Flex>
             <IconButton
               aria-label="Delete Chat"
-              icon={<IconTrash size={20} />}
               onClick={(e) => {
                 e.stopPropagation();
                 deleteChat(chat.id);
@@ -73,7 +71,9 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
               variant="ghost"
               size="sm"
               width={10}
-            />
+            >
+              <FaRegTrashAlt size={20} />
+            </IconButton>
           </ListItem>
         );
       })}

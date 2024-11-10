@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   Modal,
   ModalOverlay,
@@ -11,7 +11,11 @@ import {
   Button,
 } from "@chakra-ui/react";
 import { Title } from "@heelix-app/design";
-import { PrivacySettings, HistorySettings, GeneralSettings } from "../../../widgets";
+import {
+  PrivacySettings,
+  HistorySettings,
+  GeneralSettings,
+} from "../../../features";
 
 interface SettingsModalProps {
   isOpen: boolean;
