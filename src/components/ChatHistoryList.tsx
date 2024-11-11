@@ -1,17 +1,19 @@
 import { type FC, useRef, useEffect } from "react";
 import { Box, IconButton, List, ListItem, Flex } from "@chakra-ui/react";
 import { Text } from "@heelix-app/design";
-import { FaRegTrashAlt } from "react-icons/fa";
+import { FaRegTrashAlt, FaPlus } from "react-icons/fa";
 import type { Chat } from "../screens/ChatScreen/types";
 
 type ChatHistoryListProps = {
   chatHistory: Chat[];
   selectChatId: (id: number | undefined) => void;
+  onNewChat: () => void;
   selectedChatId: number | undefined;
   deleteChat: (id: number) => void;
 };
 export const ChatHistoryList: FC<ChatHistoryListProps> = ({
   chatHistory,
+  onNewChat,
   selectChatId,
   selectedChatId,
   deleteChat,
@@ -29,14 +31,38 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
 
   return (
     <List zIndex={101}>
+      <ListItem
+        key="new-chat"
+        _hover={{
+          backgroundColor: "gray.100",
+        }}
+        cursor="pointer"
+        onClick={onNewChat}
+        padding="var(--space-default)"
+        borderRadius="md"
+        marginBottom={2}
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+      >
+        <Flex alignItems="flex-start" flexGrow={1} gap={2} paddingRight={4}>
+          <FaPlus size={20} />
+          <Text type="m" bold>
+            New Chat
+          </Text>
+        </Flex>
+      </ListItem>
       {chatHistory.map((chat) => {
         const itemProps =
           selectedChatId === chat.id
-            ? { backgroundColor: "gray.100", ref: selectedChatRef }
+            ? { backgroundColor: "gray.200", ref: selectedChatRef }
             : { backgroundColor: "white" };
         return (
           <ListItem
             key={chat.id}
+            _hover={{
+              backgroundColor: "gray.100",
+            }}
             cursor="pointer"
             onClick={() => selectChatId(chat.id)}
             padding="var(--space-default)"

@@ -12,6 +12,7 @@ import {
   useDisclosure,
   Box,
   IconButton,
+  Tooltip,
   Wrap,
   WrapItem,
   useToast,
@@ -24,6 +25,7 @@ import type { StoredMessage, Chat } from "./types";
 import { debounce } from "lodash";
 import { FileText, X } from "lucide-react";
 import { ScreenContainer } from "@/components/layout";
+import { FaHistory, FaBookOpen } from "react-icons/fa";
 import {
   UserMessage,
   AssistantMessage,
@@ -36,6 +38,7 @@ import {
 } from "./components";
 import { useGlobalSettings } from "../../Providers/SettingsProvider";
 import { DocumentFootnote } from "./components";
+import { SidePanel } from "../../components/SidePanel";
 
 const ReponsiveContainer = styled.div`
   display: grid;
@@ -72,7 +75,7 @@ const HistoryContainer = styled.div`
 
 const ChatContainer = styled.div`
   display: flex;
-  grid-area: chat;
+  grid-area: content;
   align-items: center;
   flex-direction: column;
   width: 100%;
@@ -184,11 +187,6 @@ export const ChatScreen: FC = () => {
       }, 100),
     []
   );
-
-  const isNewDay = (lastCheckedDate: Date): boolean => {
-    const currentDate = new Date();
-    return currentDate.toDateString() !== lastCheckedDate.toDateString();
-  };
 
   useEffect(() => {
     fetchChats();
@@ -637,161 +635,146 @@ export const ChatScreen: FC = () => {
     }, timeUntilMidnight);
   };
 
+  const onClickNewChat = () => {
+    setSelectedChatId(undefined);
+    setDialogue([]);
+    setIsFirstMessage(true);
+    setIsGenerating(false);
+    setFirstTokenReceived(false);
+    setSelectedActivityTexts([]);
+  };
+
   return (
     <ScreenContainer>
       <ChatHeader
-        profileMenu={
-          <>
-            <NavButton onClick={onSettingsOpen}>Settings</NavButton>
-          </>
-        }
-        onClickNewChat={() => {
-          setSelectedChatId(undefined);
-          setDialogue([]);
-          setIsFirstMessage(true);
-          setIsGenerating(false);
-          setFirstTokenReceived(false);
-          setSelectedActivityTexts([]);
-        }}
-        toggleChatHistory={handleChatHistoryToggle}
-        toggleHistory={toggleHistory}
+        profileMenu={<NavButton onClick={onSettingsOpen}>Settings</NavButton>}
       />
-      <ReponsiveContainer>
-        <HistoryContainer className={isHistoryOpen ? "" : "hidden"}>
-          <ChatHistoryList
-            chatHistory={chats}
-            selectedChatId={selectedChatId}
-            deleteChat={handleDeleteChat}
-            selectChatId={(chatId) => {
-              setSelectedChatId(chatId);
-              setIsChatHistoryOpen(false);
-              setSelectedActivityTexts([]);
-            }}
-          />
-        </HistoryContainer>
-        <ChatContainer>
-          {dialogue.length === 0 && !isLoadingExistingChat ? (
-            <NewConversationMessage />
-          ) : (
-            <MessagesScrollContainer ref={messageContainerRef}>
-              <MessagesContainer>
-                {dialogue.map((message, index) => {
-                  const messageProps =
-                    index === dialogue.length - 1
-                      ? {
-                          ref: messageRef,
-                        }
-                      : {};
-                  return (
-                    <Fragment key={message.id}>
-                      {message.role === "user" && (
-                        <UserMessage
+      <SidePanel
+        gridArea={"sidebar"}
+        pages={[
+          {
+            icon: (
+              <Tooltip label="Chat History" placement="bottom">
+                <FaHistory size={20} />
+              </Tooltip>
+            ),
+            text: "History",
+            content: (
+              <ChatHistoryList
+                chatHistory={chats}
+                onNewChat={onClickNewChat}
+                selectedChatId={selectedChatId}
+                deleteChat={handleDeleteChat}
+                selectChatId={(chatId) => {
+                  setSelectedChatId(chatId);
+                  setIsChatHistoryOpen(false);
+                  setSelectedActivityTexts([]);
+                }}
+              />
+            ),
+          },
+          {
+            icon: <FaBookOpen size={20} />,
+            text: "Projects",
+            content: <h1>Comming soon</h1>,
+          },
+        ]}
+      />
+      <ChatContainer>
+        {dialogue.length === 0 && !isLoadingExistingChat ? (
+          <NewConversationMessage />
+        ) : (
+          <MessagesScrollContainer ref={messageContainerRef}>
+            <MessagesContainer>
+              {dialogue.map((message, index) => {
+                const messageProps =
+                  index === dialogue.length - 1
+                    ? {
+                        ref: messageRef,
+                      }
+                    : {};
+                return (
+                  <Fragment key={message.id}>
+                    {message.role === "user" && (
+                      <UserMessage
+                        key={message.id}
+                        message={message}
+                        name={"You"}
+                        {...messageProps}
+                      />
+                    )}
+                    {message.role === "assistant" && (
+                      <>
+                        <AssistantMessage
                           key={message.id}
                           message={message}
-                          name={"You"}
+                          isGenerating={isGenerating}
                           {...messageProps}
                         />
-                      )}
-                      {message.role === "assistant" && (
-                        <>
-                          <AssistantMessage
-                            key={message.id}
-                            message={message}
-                            isGenerating={isGenerating}
-                            {...messageProps}
-                          />
-                          {index === 1 && windowTitles.length > 0 && (
-                            <DocumentFootnote windowTitles={windowTitles} />
-                          )}
-                        </>
-                      )}
-                    </Fragment>
-                  );
-                })}
-                {!firstTokenReceived && isGenerating && (
-                  <Flex justify="center" mt={2}>
-                    <Text type="s">Assistant is typing...</Text>
-                  </Flex>
-                )}
-                {isGenerating && (
-                  <Flex justify="center" mt={2}>
-                    <Spinner />
-                  </Flex>
-                )}
-              </MessagesContainer>
-              {isLoadingExistingChat && (
+                        {index === 1 && windowTitles.length > 0 && (
+                          <DocumentFootnote windowTitles={windowTitles} />
+                        )}
+                      </>
+                    )}
+                  </Fragment>
+                );
+              })}
+              {!firstTokenReceived && isGenerating && (
+                <Flex justify="center" mt={2}>
+                  <Text type="s">Assistant is typing...</Text>
+                </Flex>
+              )}
+              {isGenerating && (
                 <Flex justify="center" mt={2}>
                   <Spinner />
                 </Flex>
               )}
-            </MessagesScrollContainer>
-          )}
-          {selectedActivityTexts.length > 0 && (
-            <Box mt={4} p={4} maxWidth="var(--breakpoint-medium)" mx="auto">
-              <Wrap spacing={4}>
-                {selectedActivityTexts.map((text, index) => (
-                  <WrapItem key={index}>
-                    <Flex>
-                      <ActivityIcon>
-                        <FileText size={24} />
-                        <IconButton
-                          icon={<X size={16} />}
-                          size="xs"
-                          aria-label="Remove activity"
-                          position="absolute"
-                          top="-8px"
-                          right="-8px"
-                          borderRadius="full"
-                          onClick={() => handleRemoveActivity(index)}
-                        />
-                      </ActivityIcon>
-                      <ActivityPreview>
-                        {text.length > 50
-                          ? `${text.substring(0, 50)}...`
-                          : text}
-                      </ActivityPreview>
-                    </Flex>
-                  </WrapItem>
-                ))}
-              </Wrap>
-            </Box>
-          )}
-          <ChatInput
-            value={userInput}
-            onChange={handleInputChange}
-            onKeyDown={handleKeyPress}
-            onSubmit={handleSubmit}
-            onActivityHistoryToggle={handleActivityHistoryToggle}
-            isGenerating={isGenerating}
-            isLoading={isLoading}
-          />
-        </ChatContainer>
-      </ReponsiveContainer>
-      <Drawer
-        isOpen={isChatHistoryOpen}
-        placement="left"
-        onClose={handleChatHistoryToggle}
-      >
-        <DrawerOverlay />
-        <DrawerContent>
-          <DrawerCloseButton />
-          <DrawerHeader>
-            <Title type="m">Chat History</Title>
-          </DrawerHeader>
-          <DrawerBody>
-            <ChatHistoryList
-              chatHistory={chats}
-              selectedChatId={selectedChatId}
-              deleteChat={handleDeleteChat}
-              selectChatId={(chatId) => {
-                setSelectedChatId(chatId);
-                setIsChatHistoryOpen(false);
-                setSelectedActivityTexts([]);
-              }}
-            />
-          </DrawerBody>
-        </DrawerContent>
-      </Drawer>
+            </MessagesContainer>
+            {isLoadingExistingChat && (
+              <Flex justify="center" mt={2}>
+                <Spinner />
+              </Flex>
+            )}
+          </MessagesScrollContainer>
+        )}
+        {selectedActivityTexts.length > 0 && (
+          <Box mt={4} p={4} maxWidth="var(--breakpoint-medium)" mx="auto">
+            <Wrap spacing={4}>
+              {selectedActivityTexts.map((text, index) => (
+                <WrapItem key={index}>
+                  <Flex>
+                    <ActivityIcon>
+                      <FileText size={24} />
+                      <IconButton
+                        icon={<X size={16} />}
+                        size="xs"
+                        aria-label="Remove activity"
+                        position="absolute"
+                        top="-8px"
+                        right="-8px"
+                        borderRadius="full"
+                        onClick={() => handleRemoveActivity(index)}
+                      />
+                    </ActivityIcon>
+                    <ActivityPreview>
+                      {text.length > 50 ? `${text.substring(0, 50)}...` : text}
+                    </ActivityPreview>
+                  </Flex>
+                </WrapItem>
+              ))}
+            </Wrap>
+          </Box>
+        )}
+        <ChatInput
+          value={userInput}
+          onChange={handleInputChange}
+          onKeyDown={handleKeyPress}
+          onSubmit={handleSubmit}
+          onActivityHistoryToggle={handleActivityHistoryToggle}
+          isGenerating={isGenerating}
+          isLoading={isLoading}
+        />
+      </ChatContainer>
       <SettingsModal
         isOpen={isSettingsOpen}
         onClose={onSettingsClose}
