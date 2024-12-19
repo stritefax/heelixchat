@@ -52,3 +52,9 @@ export const deleteActivity = async (id: number) => {
     console.error("Error deleting activity:", error);
   }
 };
+
+export const getFullActivityText = async (id: number): Promise<string> => {
+  return await invoke<string>("get_activity_full_text_by_id", {
+    id,
+  });
+};

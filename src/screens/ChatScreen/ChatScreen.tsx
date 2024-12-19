@@ -34,6 +34,7 @@ import { useGlobalSettings } from "../../Providers/SettingsProvider";
 import { DocumentFootnote } from "./components";
 import { SidePanel } from "../../components/SidePanel";
 import { Projects } from "../../features";
+import { useProject } from "../../state";
 
 const ChatContainer = styled.div`
   display: flex;
@@ -105,7 +106,6 @@ export const ChatScreen: FC = () => {
   const messageRef = useRef<HTMLDivElement | null>(null);
   const messageContainerRef = useRef<HTMLDivElement | null>(null);
   const [isFirstMessage, setIsFirstMessage] = useState(true);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(true);
   const [windowTitles, setWindowTitles] = useState<string[]>([]);
   const [isLoadingExistingChat, setIsLoadingExistingChat] = useState(false);
   const [dailyOutputTokens, setDailyOutputTokens] = useState(0);
@@ -116,10 +116,7 @@ export const ChatScreen: FC = () => {
   );
   const [combinedActivityText, setCombinedActivityText] = useState("");
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const toggleHistory = () => {
-    setIsHistoryOpen(!isHistoryOpen);
-  };
+  const { getSelectedProjectActivityText } = useProject();
 
   const handleActivityHistoryToggle = () => {
     setIsActivityHistoryOpen(!isActivityHistoryOpen);
@@ -224,6 +221,7 @@ export const ChatScreen: FC = () => {
       // Combine all texts into a single string
       const combined = updatedTexts.join("\n\n");
 
+      console.log("COMBINED_TEXT_THINGY", combined);
       setCombinedActivityText(combined);
       return updatedTexts;
     });
@@ -358,13 +356,19 @@ export const ChatScreen: FC = () => {
         await invoke("send_prompt_to_openai", {
           conversationHistory: fullConversation,
           isFirstMessage,
-          combinedActivityText, // Add this line
+          combinedActivityText:
+            (await getSelectedProjectActivityText()) +
+            "/n" +
+            combinedActivityText, // Add this line
         });
       } else {
         await invoke("send_prompt_to_llm", {
           conversationHistory: fullConversation,
           isFirstMessage,
-          combinedActivityText, // Add this line
+          combinedActivityText:
+            (await getSelectedProjectActivityText()) +
+            "/n" +
+            combinedActivityText, // Add this line
         });
       }
 

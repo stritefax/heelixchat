@@ -2,6 +2,7 @@ import { useAtom } from "jotai";
 import { atomWithReducer } from "jotai/utils";
 import { useEffect } from "react";
 import { projectService, type Project } from "../data/project";
+import { getFullActivityText } from "../data/activities";
 
 type ProjectState = {
   projects: Project[];
@@ -91,5 +92,33 @@ export const useProject = () => {
   const selectProject = (projectId: number) =>
     dispatch({ type: "select", payload: projectId });
 
-  return { state, selectProject, addProject, deleteProject, updateProject };
+  const getSelectedProject = () => {
+    return state.projects.find(
+      (project) => project.id === state.selectedProject
+    );
+  };
+
+  const getSelectedProjectActivityText = async () => {
+    const selectedProject = getSelectedProject();
+    if (selectedProject) {
+      const promises = selectedProject?.activities.map((activityId) =>
+        getFullActivityText(activityId)
+      );
+      const fullTextActivities = await Promise.all(promises);
+      return fullTextActivities
+        .map((text, index) => `${index + 1}. Activity: /n ${text}`)
+        .join(", ");
+    }
+    return "";
+  };
+  
+  return {
+    state,
+    getSelectedProject,
+    getSelectedProjectActivityText,
+    selectProject,
+    addProject,
+    deleteProject,
+    updateProject,
+  };
 };

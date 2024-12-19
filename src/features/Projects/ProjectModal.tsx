@@ -60,7 +60,6 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
     [projectId, state.projects]
   );
 
-  console.log("THE_CURRENT_PROJECT", currentProject, projectId);
   useEffect(() => {
     if (currentProject) {
       setProjectActivities(
