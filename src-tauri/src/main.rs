@@ -29,11 +29,15 @@ use crate::engine::similarity_search_engine::SyncSimilaritySearch;
 use crate::entity::activity_item::ActivityItem;
 use crate::entity::chat_item::{Chat, StoredMessage};
 use crate::entity::permission::Permission;
+use crate::entity::project::Project;
 use crate::entity::setting::Setting;
 use crate::permissions::permission_engine::init_permissions;
 use crate::repository::activity_log_repository;
 use crate::repository::chat_db_repository;
 use crate::repository::permissions_repository::{get_permissions, update_permission};
+use crate::repository::project_repository::{
+    delete_project, fetch_all_projects, save_project, update_project,
+};
 use crate::repository::settings_repository::{get_setting, get_settings, insert_or_update_setting};
 use tauri_plugin_autostart::MacosLauncher;
 
@@ -138,6 +142,10 @@ async fn main() {
             update_chat_name,
             update_app_permissions,
             get_app_permissions,
+            get_projects,
+            save_app_project,
+            update_app_project,
+            delete_app_project,
             delete_chat,
             prompt_for_accessibility_permissions,
             get_activity_history,
@@ -293,6 +301,39 @@ fn update_app_permissions(app_handle: AppHandle, app_path: String, allow: bool) 
 fn get_app_permissions(app_handle: AppHandle) -> Result<Vec<Permission>, ()> {
     let permissions = app_handle.db(|database| get_permissions(database).unwrap());
     return Ok(permissions);
+}
+
+#[tauri::command]
+fn get_projects(app_handle: AppHandle) -> Result<Vec<Project>, ()> {
+    let projects = app_handle.db(|database| fetch_all_projects(database).unwrap());
+    return Ok(projects);
+}
+
+#[tauri::command]
+fn save_app_project(
+    app_handle: AppHandle,
+    name: &str,
+    activities: Vec<i64>,
+) -> Result<Vec<i64>, ()> {
+    app_handle.db(|database| save_project(database, name, &activities).unwrap());
+    return Ok(activities);
+}
+
+#[tauri::command]
+fn update_app_project(
+    app_handle: AppHandle,
+    id: i64,
+    name: &str,
+    activities: Vec<i64>,
+) -> Result<Vec<i64>, ()> {
+    app_handle.db(|database| update_project(database, id, name, &activities).unwrap());
+    return Ok(activities);
+}
+
+#[tauri::command]
+fn delete_app_project(app_handle: AppHandle, project_id: i64) -> Result<i64, ()> {
+    app_handle.db(|database| delete_project(database, project_id).unwrap());
+    return Ok(project_id);
 }
 
 #[tauri::command]

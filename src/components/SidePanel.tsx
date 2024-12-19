@@ -23,7 +23,7 @@ export const SidePanel: FC<SidePanelProps> = ({ pages, gridArea }) => {
     <Tabs variant={"soft-rounded"} style={{ gridArea, height: "100%" }}>
       <TabList style={{ padding: "12px" }}>
         {pages.map((page) => (
-          <Tab>
+          <Tab key={page.text}>
             <TabHeaderContent>
               {page.icon}
               {page.text}
@@ -33,7 +33,7 @@ export const SidePanel: FC<SidePanelProps> = ({ pages, gridArea }) => {
       </TabList>
       <TabPanels>
         {pages.map((page) => (
-          <TabPanel>{page.content}</TabPanel>
+          <TabPanel key={page.text}>{page.content}</TabPanel>
         ))}
       </TabPanels>
     </Tabs>

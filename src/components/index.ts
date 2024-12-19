@@ -1,3 +1,3 @@
 export { LoadingList } from "./LoadingList";
-export { RecordingIndicator } from "./RecordingIndicator";
 export { Navigation } from "./Navigation";
+export { ProjectModal } from "../features/Projects/ProjectModal";

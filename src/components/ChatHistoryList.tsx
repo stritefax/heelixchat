@@ -3,6 +3,15 @@ import { Box, IconButton, List, ListItem, Flex } from "@chakra-ui/react";
 import { Text } from "@heelix-app/design";
 import { FaRegTrashAlt, FaPlus } from "react-icons/fa";
 import type { Chat } from "../screens/ChatScreen/types";
+import styled from "styled-components";
+
+const NewChatContainer = styled.div`
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+  padding: 0 12px 0 0;
+`;
 
 type ChatHistoryListProps = {
   chatHistory: Chat[];
@@ -45,12 +54,12 @@ export const ChatHistoryList: FC<ChatHistoryListProps> = ({
         justifyContent="space-between"
         alignItems="center"
       >
-        <Flex alignItems="flex-start" flexGrow={1} gap={2} paddingRight={4}>
+        <NewChatContainer>
           <FaPlus size={20} />
           <Text type="m" bold>
             New Chat
           </Text>
-        </Flex>
+        </NewChatContainer>
       </ListItem>
       {chatHistory.map((chat) => {
         const itemProps =

@@ -3,12 +3,6 @@ import { type } from "@tauri-apps/api/os";
 import {
   Flex,
   Spinner,
-  Drawer,
-  DrawerBody,
-  DrawerHeader,
-  DrawerOverlay,
-  DrawerContent,
-  DrawerCloseButton,
   useDisclosure,
   Box,
   IconButton,
@@ -17,7 +11,7 @@ import {
   WrapItem,
   useToast,
 } from "@chakra-ui/react";
-import { Text, Title, NavButton } from "@heelix-app/design";
+import { Text, NavButton } from "@heelix-app/design";
 import styled from "styled-components";
 import { invoke } from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
@@ -39,39 +33,7 @@ import {
 import { useGlobalSettings } from "../../Providers/SettingsProvider";
 import { DocumentFootnote } from "./components";
 import { SidePanel } from "../../components/SidePanel";
-
-const ReponsiveContainer = styled.div`
-  display: grid;
-  grid-template-areas: "chat";
-  grid-template-columns: 1fr;
-  width: 100%;
-  height: 100%;
-  padding-top: 56px;
-  overflow: hidden;
-
-  @media (min-width: 1024px) {
-    grid-template-areas: "history chat";
-    grid-template-columns: auto 1fr;
-  }
-`;
-
-const HistoryContainer = styled.div`
-  display: none;
-  flex-direction: column;
-  grid-area: history;
-  height: 100%;
-  width: 270px;
-  overflow-y: auto;
-  transition: width 0.5s ease-in-out;
-
-  &.hidden {
-    width: 0px;
-  }
-
-  @media (min-width: 1024px) {
-    display: flex;
-  }
-`;
+import { Projects } from "../../features";
 
 const ChatContainer = styled.div`
   display: flex;
@@ -676,7 +638,7 @@ export const ChatScreen: FC = () => {
           {
             icon: <FaBookOpen size={20} />,
             text: "Projects",
-            content: <h1>Comming soon</h1>,
+            content: <Projects />,
           },
         ]}
       />

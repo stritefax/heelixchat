@@ -2,7 +2,7 @@ import type { FC, PropsWithChildren } from "react";
 import { Grid, GridItem, Flex } from "@chakra-ui/react";
 import { UserProfile } from "@heelix-app/components";
 import { useRecordingState } from "../Providers/RecordingStateProvider";
-import { RecordingIndicator } from "../components";
+// import { RecordingIndicator } from "../components";
 
 type NavigationProps = {} & PropsWithChildren;
 
@@ -27,7 +27,7 @@ export const Navigation: FC<NavigationProps> = ({ children }) => {
         <Flex justifyContent={"space-between"} align={"center"}>
           <Flex p={2} gap={2} alignItems={"center"}>
             <UserProfile />
-            <RecordingIndicator isRecording={isRecording} />
+            {/* <RecordingIndicator isRecording={isRecording} /> */}
           </Flex>
         </Flex>
       </GridItem>

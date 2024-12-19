@@ -111,7 +111,6 @@ export const RecordingStateProvider: FC<PropsWithChildren> = ({ children }) => {
   const recordSingleActivity = () => {
     invoke("record_single_activity", {
       user: user.id,
-      variant: import.meta.env.VITE_VARIANT,
     }).then((response) => {
       let activityLog = buildActivityLogFromResponse(response);
       setActivityLog(activityLog);
