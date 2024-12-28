@@ -11,7 +11,7 @@ type ProjectState = {
 
 type ProjectAction =
   | { type: "set"; payload: Project[] }
-  | { type: "select"; payload: Project["id"] }
+  | { type: "select"; payload: Project["id"] | undefined }  // Updated this line
   | {
       type: "update";
       payload: Project;
@@ -89,7 +89,7 @@ export const useProject = () => {
     fetch();
   };
 
-  const selectProject = (projectId: number) =>
+  const selectProject = (projectId: Project["id"] | undefined) =>
     dispatch({ type: "select", payload: projectId });
 
   const getSelectedProject = () => {
