@@ -116,8 +116,15 @@ export const ChatScreen: FC = () => {
   );
   const [combinedActivityText, setCombinedActivityText] = useState("");
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { getSelectedProjectActivityText } = useProject();
-
+  const { 
+    state,
+    getSelectedProject, 
+    getSelectedProjectActivityText,
+    fetchSelectedActivityText,
+    selectProject,
+    selectActivity
+  } = useProject();
+  const [selectedActivityText, setSelectedActivityText] = useState("");
   const handleActivityHistoryToggle = () => {
     setIsActivityHistoryOpen(!isActivityHistoryOpen);
   };
@@ -178,7 +185,16 @@ export const ChatScreen: FC = () => {
       unlisten3.then((f) => f());
     };
   }, []);
-
+  
+  useEffect(() => {
+    if (state.selectedActivityId) {
+      fetchSelectedActivityText().then((text) => {
+        setSelectedActivityText(text);
+      });
+    } else {
+      setSelectedActivityText("");
+    }
+  }, [state.selectedActivityId]);
   const fetchChats = async () => {
     try {
       messageRef.current = null;
@@ -242,8 +258,10 @@ export const ChatScreen: FC = () => {
     if (selectedChatId) {
       setDialogue([]);
       fetchMessages(selectedChatId);
+      selectActivity(null); // Add this line to clear selected activity
     } else {
       setDialogue([]);
+      selectActivity(null); // Add this line here too to handle both cases
     }
   }, [selectedChatId]);
 
@@ -642,66 +660,85 @@ export const ChatScreen: FC = () => {
           {
             icon: <FaBookOpen size={20} />,
             text: "Projects",
-            content: <Projects />,
+            content: (
+              <Projects
+                selectedActivityId={state.selectedActivityId}
+                onSelectActivity={selectActivity}
+              />
+            ),
           },
         ]}
       />
       <ChatContainer>
-        {dialogue.length === 0 && !isLoadingExistingChat ? (
-          <NewConversationMessage />
-        ) : (
-          <MessagesScrollContainer ref={messageContainerRef}>
-            <MessagesContainer>
-              {dialogue.map((message, index) => {
-                const messageProps =
-                  index === dialogue.length - 1
-                    ? {
-                        ref: messageRef,
-                      }
-                    : {};
-                return (
-                  <Fragment key={message.id}>
-                    {message.role === "user" && (
-                      <UserMessage
-                        key={message.id}
-                        message={message}
-                        name={"You"}
-                        {...messageProps}
-                      />
-                    )}
-                    {message.role === "assistant" && (
-                      <>
-                        <AssistantMessage
-                          key={message.id}
-                          message={message}
-                          isGenerating={isGenerating}
-                          {...messageProps}
-                        />
-                        {index === 1 && windowTitles.length > 0 && (
-                          <DocumentFootnote windowTitles={windowTitles} />
+        {selectedActivityText ? (
+  <Box 
+  width="100%"
+  maxWidth="var(--breakpoint-medium)" 
+  padding="var(--space-l) var(--space-l) 0 var(--space-l)"
+>
+  <Text type="m">
+    {selectedActivityText}
+  </Text>
+</Box>
+) : (
+          <>
+            {dialogue.length === 0 && !isLoadingExistingChat ? (
+              <NewConversationMessage />
+            ) : (
+              <MessagesScrollContainer ref={messageContainerRef}>
+                <MessagesContainer>
+                  {dialogue.map((message, index) => {
+                    const messageProps =
+                      index === dialogue.length - 1
+                        ? {
+                            ref: messageRef,
+                          }
+                        : {};
+                    return (
+                      <Fragment key={message.id}>
+                        {message.role === "user" && (
+                          <UserMessage
+                            key={message.id}
+                            message={message}
+                            name={"You"}
+                            {...messageProps}
+                          />
                         )}
-                      </>
-                    )}
-                  </Fragment>
-                );
-              })}
-              {!firstTokenReceived && isGenerating && (
-                <Flex justify="center" mt={2}>
-                  <Text type="s">Assistant is typing...</Text>
-                </Flex>
-              )}
-              {isGenerating && (
-                <Flex justify="center" mt={2}>
-                  <Spinner />
-                </Flex>
-              )}
-            </MessagesContainer>
-            {isLoadingExistingChat && (
-              <Flex justify="center" mt={2}>
-                <Spinner />
-              </Flex>
+                        {message.role === "assistant" && (
+                          <>
+                            <AssistantMessage
+                              key={message.id}
+                              message={message}
+                              isGenerating={isGenerating}
+                              {...messageProps}
+                            />
+                            {index === 1 && windowTitles.length > 0 && (
+                              <DocumentFootnote windowTitles={windowTitles} />
+                            )}
+                          </>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                  {!firstTokenReceived && isGenerating && (
+                    <Flex justify="center" mt={2}>
+                      <Text type="s">Assistant is typing...</Text>
+                    </Flex>
+                  )}
+                  {isGenerating && (
+                    <Flex justify="center" mt={2}>
+                      <Spinner />
+                    </Flex>
+                  )}
+                </MessagesContainer>
+                {isLoadingExistingChat && (
+                  <Flex justify="center" mt={2}>
+                    <Spinner />
+                  </Flex>
+                )}
+              </MessagesScrollContainer>
             )}
-          </MessagesScrollContainer>
+          </>
         )}
         {selectedActivityTexts.length > 0 && (
           <Box mt={4} p={4} maxWidth="var(--breakpoint-medium)" mx="auto">

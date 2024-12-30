@@ -29,7 +29,7 @@ pub fn update_project(
         "UPDATE projects SET name = ?1 WHERE id = ?2",
         params![name, project_id],
     )?;
-    add_project_activities(conn, project_id, activities.clone())?;
+    add_project_activities(conn, project_id, activities)?;
     Ok(())
 }
 
@@ -45,28 +45,31 @@ pub fn save_project(
     })?;
     let project_id = conn.last_insert_rowid();
 
-    add_project_activities(conn, project_id, activities.clone())?;
+    add_project_activities(conn, project_id, activities)?;
     Ok(())
 }
 
 pub fn add_project_activities(
     conn: &Connection,
     project_id: i64,
-    activity_ids: Vec<i64>,
+    activity_ids: &Vec<i64>,
 ) -> Result<(), rusqlite::Error> {
-    {
-        let mut stmt = conn
-            .prepare("INSERT INTO projects_activities (project_id, activity_id) VALUES (?1, ?2)")?;
-        for id in activity_ids {
-            stmt.execute(params![project_id, id])?;
-        }
+    let mut stmt = conn.prepare(
+        "INSERT INTO projects_activities (project_id, activity_id, document_name) 
+         SELECT ?1, id, COALESCE(window_title, 'Document ' || id) 
+         FROM activity_full_text 
+         WHERE id = ?2"
+    )?;
+
+    for &activity_id in activity_ids {
+        stmt.execute(params![project_id, activity_id])?;
     }
 
     Ok(())
 }
 
 pub fn fetch_all_projects(conn: &Connection) -> Result<Vec<Project>, rusqlite::Error> {
-    let mut stmt = conn.prepare("SELECT id, name,  created_at FROM projects")?;
+    let mut stmt = conn.prepare("SELECT id, name, created_at FROM projects")?;
     let project_iter = stmt.query_map([], |row| {
         Ok(Project {
             id: row.get(0)?,

@@ -3,7 +3,7 @@ use serde_derive::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, FromRow, Clone)]
 pub struct ActivityItem {
-    pub id: i64,
+    //pub id: i64,
     pub timestamp: String,
     pub user_id: String,
     pub window_title: String,

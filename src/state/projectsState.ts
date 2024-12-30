@@ -7,19 +7,15 @@ import { getFullActivityText } from "../data/activities";
 type ProjectState = {
   projects: Project[];
   selectedProject: Project["id"] | undefined;
+  selectedActivityId: number | null;
 };
 
 type ProjectAction =
   | { type: "set"; payload: Project[] }
-  | { type: "select"; payload: Project["id"] | undefined }  // Updated this line
-  | {
-      type: "update";
-      payload: Project;
-    }
-  | {
-      type: "delete";
-      payload: Project["id"];
-    };
+  | { type: "select"; payload: Project["id"] | undefined }
+  | { type: "update"; payload: Project }
+  | { type: "delete"; payload: Project["id"] }
+  | { type: "selectActivity"; payload: number | null };
 
 const projectReducer = (prev: ProjectState, action: ProjectAction) => {
   switch (action.type) {
@@ -49,14 +45,19 @@ const projectReducer = (prev: ProjectState, action: ProjectAction) => {
         prev.projects.splice(projectDeleteIndex, 1);
       }
       return { ...prev };
+    case "selectActivity":
+      return {
+        ...prev,
+        selectedActivityId: action.payload,
+      };
   }
 };
 
-// Define the atom with the reducer
 export const projectAtom = atomWithReducer<ProjectState, ProjectAction>(
   {
     projects: [],
     selectedProject: undefined,
+    selectedActivityId: null,
   },
   projectReducer
 );
@@ -92,10 +93,11 @@ export const useProject = () => {
   const selectProject = (projectId: Project["id"] | undefined) =>
     dispatch({ type: "select", payload: projectId });
 
+  const selectActivity = (activityId: number | null) =>
+    dispatch({ type: "selectActivity", payload: activityId });
+
   const getSelectedProject = () => {
-    return state.projects.find(
-      (project) => project.id === state.selectedProject
-    );
+    return state.projects.find((project) => project.id === state.selectedProject);
   };
 
   const getSelectedProjectActivityText = async () => {
@@ -111,12 +113,22 @@ export const useProject = () => {
     }
     return "";
   };
-  
+
+  const fetchSelectedActivityText = async () => {
+    if (state.selectedActivityId) {
+      const text = await getFullActivityText(state.selectedActivityId);
+      return text;
+    }
+    return "";
+  };
+
   return {
     state,
     getSelectedProject,
     getSelectedProjectActivityText,
+    fetchSelectedActivityText,
     selectProject,
+    selectActivity,
     addProject,
     deleteProject,
     updateProject,

@@ -52,7 +52,10 @@ const StyledMenuButton = styled(MenuButton)`
   }
 `;
 
-export const Projects: FC = () => {
+export const Projects: FC<{
+  selectedActivityId: number | null;
+  onSelectActivity: (activityId: number | null) => void;
+}> = ({ selectedActivityId, onSelectActivity }) => {
   const { state, selectProject, addProject, deleteProject, updateProject } = useProject();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<null | number>(null);
@@ -92,6 +95,10 @@ export const Projects: FC = () => {
     setSelectedProjectId(null);
   };
 
+  const handleActivitySelect = (activityId: number) => {
+    onSelectActivity(activityId);
+  };
+
   return (
     <Container>
       <ProjectSelector
@@ -102,6 +109,8 @@ export const Projects: FC = () => {
         onNewProject={handleNewProject}
         onEditProject={handleEditProject}
         onDeleteProject={handleDeleteProject}
+        selectedActivityId={selectedActivityId}
+        onSelectActivity={handleActivitySelect}
       />
       
       <ProjectModal
@@ -123,6 +132,8 @@ const ProjectSelector: FC<{
   onNewProject: () => void;
   onEditProject: (project: Project) => void;
   onDeleteProject: (project: Project) => void;
+  selectedActivityId: number | null;
+  onSelectActivity: (activityId: number) => void;
 }> = ({
   projects,
   selectedProject,
@@ -130,9 +141,11 @@ const ProjectSelector: FC<{
   onUnselectProject,
   onNewProject,
   onEditProject,
-  onDeleteProject
+  onDeleteProject,
+  selectedActivityId,
+  onSelectActivity
 }) => {
-  const projectDocuments = useMemo(() => {
+  const projectActivities = useMemo(() => {
     if (!selectedProject) return [];
     return selectedProject.activities.map(activityId => ({
       id: activityId,
@@ -239,9 +252,9 @@ const ProjectSelector: FC<{
             </ButtonGroup>
           </Flex>
           <Box>
-            {projectDocuments.map((doc) => (
+            {projectActivities.map((activity) => (
               <Flex
-                key={doc.id}
+                key={activity.id}
                 p={3}
                 borderBottomWidth="1px"
                 borderBottomColor="gray.100"
@@ -250,23 +263,17 @@ const ProjectSelector: FC<{
                 justify="space-between"
                 _hover={{ bg: 'gray.50' }}
                 transition="all 0.2s"
+                bg={selectedActivityId === activity.id ? 'blue.50' : 'white'}
+                onClick={() => onSelectActivity(activity.id)}
+                cursor="pointer"
               >
                 <Flex align="center" gap={2}>
                   <File size={16} />
-                  <Text type="m">{doc.name}</Text>
+                  <Text type="m">{activity.name}</Text>
                 </Flex>
-                <IconButton
-                  aria-label="Remove document"
-                  icon={<Trash2 size={14} />}
-                  size="xs"
-                  variant="ghost"
-                  colorScheme="red"
-                  opacity={0}
-                  _groupHover={{ opacity: 1 }}
-                />
               </Flex>
             ))}
-            {projectDocuments.length === 0 && (
+            {projectActivities.length === 0 && (
               <Flex 
                 justify="center" 
                 align="center" 

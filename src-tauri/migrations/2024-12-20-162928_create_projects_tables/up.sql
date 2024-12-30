@@ -7,5 +7,6 @@ CREATE TABLE IF NOT EXISTS projects (
 CREATE TABLE IF NOT EXISTS projects_activities (
     project_id INTEGER NOT NULL,
     activity_id INTEGER NOT NULL,
+    document_name TEXT NOT NULL DEFAULT '',
     PRIMARY KEY (project_id, activity_id)
 );
