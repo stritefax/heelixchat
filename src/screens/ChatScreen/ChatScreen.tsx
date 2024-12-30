@@ -19,7 +19,8 @@ import type { StoredMessage, Chat } from "./types";
 import { debounce } from "lodash";
 import { FileText, X } from "lucide-react";
 import { ScreenContainer } from "@/components/layout";
-import { FaHistory, FaBookOpen } from "react-icons/fa";
+import { History, Folder } from "lucide-react";
+
 import {
   UserMessage,
   AssistantMessage,
@@ -639,8 +640,8 @@ export const ChatScreen: FC = () => {
           {
             icon: (
               <Tooltip label="Chat History" placement="bottom">
-                <FaHistory size={20} />
-              </Tooltip>
+        <History size={20} />
+        </Tooltip>
             ),
             text: "History",
             content: (
@@ -658,7 +659,7 @@ export const ChatScreen: FC = () => {
             ),
           },
           {
-            icon: <FaBookOpen size={20} />,
+            icon: <Folder size={20} />,  // CHANGED THIS LINE
             text: "Projects",
             content: (
               <Projects

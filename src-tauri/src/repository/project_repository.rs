@@ -75,6 +75,7 @@ pub fn fetch_all_projects(conn: &Connection) -> Result<Vec<Project>, rusqlite::E
             id: row.get(0)?,
             name: row.get(1)?,
             activities: Vec::new(),
+            activity_names: Vec::new(),
             created_at: row.get(2)?,
         })
     })?;
@@ -82,30 +83,39 @@ pub fn fetch_all_projects(conn: &Connection) -> Result<Vec<Project>, rusqlite::E
     let mut projects = Vec::new();
     for project in project_iter {
         let mut project = project?;
-        project.activities = fetch_activities_by_project_id(conn, project.id)?;
+        let (ids, names) = fetch_activities_by_project_id(conn, project.id)?;
+        project.activities = ids;
+        project.activity_names = names;
         projects.push(project);
     }
 
-    return Ok(projects);
+    Ok(projects)
 }
 
 // Define a function to fetch activities by project ID
 pub fn fetch_activities_by_project_id(
     conn: &Connection,
     project_id: i64,
-) -> Result<Vec<i64>, rusqlite::Error> {
+) -> Result<(Vec<i64>, Vec<String>), rusqlite::Error> {
     let mut stmt = conn.prepare(
-        "SELECT a.id \
-         FROM projects_activities pa \
-         INNER JOIN activity_full_text a ON pa.activity_id = a.id \
-         WHERE pa.project_id = ?1",
+        "SELECT a.id, pa.document_name 
+         FROM projects_activities pa 
+         INNER JOIN activity_full_text a ON pa.activity_id = a.id 
+         WHERE pa.project_id = ?1"
     )?;
-    let activity_iter = stmt.query_map(params![project_id], |row| Ok(row.get("id")?))?;
+    
+    let mut ids = Vec::new();
+    let mut names = Vec::new();
+    
+    let rows = stmt.query_map(params![project_id], |row| {
+        Ok((row.get::<_, i64>("id")?, row.get::<_, String>("document_name")?))
+    })?;
 
-    let mut activities = Vec::new();
-    for activity in activity_iter {
-        activities.push(activity?);
+    for row in rows {
+        let (id, name) = row?;
+        ids.push(id);
+        names.push(name);
     }
 
-    Ok(activities)
+    Ok((ids, names))
 }

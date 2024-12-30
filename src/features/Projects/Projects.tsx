@@ -147,11 +147,11 @@ const ProjectSelector: FC<{
 }) => {
   const projectActivities = useMemo(() => {
     if (!selectedProject) return [];
-    return selectedProject.activities.map(activityId => ({
+    return selectedProject.activities.map((activityId, index) => ({
       id: activityId,
-      name: `Document ${activityId}`
+      name: selectedProject.activity_names[index] || `Document ${activityId}`
     }));
-  }, [selectedProject]);
+}, [selectedProject]);
 
   return (
     <Flex direction="column" w="full" gap={4}>

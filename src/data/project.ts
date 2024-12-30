@@ -3,7 +3,8 @@ import { invoke } from "@tauri-apps/api/tauri";
 export type Project = {
   id: number;
   name: string;
-  activities: number[];
+  activities: number[];       // Array of activity IDs
+  activity_names: string[];   // Array of document names
 };
 
 export const fetchProjects = async (offset: number): Promise<any[]> => {
