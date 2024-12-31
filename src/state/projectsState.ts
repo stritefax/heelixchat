@@ -104,20 +104,22 @@ export const useProject = () => {
     const selectedProject = getSelectedProject();
     if (selectedProject) {
       const promises = selectedProject?.activities.map((activityId) =>
-        getFullActivityText(activityId)
+        getFullActivityText(selectedProject.id, activityId)
       );
       const fullTextActivities = await Promise.all(promises);
       return fullTextActivities
-        .map((text, index) => `${index + 1}. Activity: /n ${text}`)
+        .map((text, index) => `${index + 1}. Activity: \n ${text}`)
         .join(", ");
     }
     return "";
   };
-
+  
   const fetchSelectedActivityText = async () => {
     if (state.selectedActivityId) {
-      const text = await getFullActivityText(state.selectedActivityId);
-      return text;
+      const selectedProject = getSelectedProject();
+      if (selectedProject) {
+        return getFullActivityText(selectedProject.id, state.selectedActivityId);
+      }
     }
     return "";
   };

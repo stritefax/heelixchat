@@ -55,16 +55,15 @@ pub fn add_project_activities(
     activity_ids: &Vec<i64>,
 ) -> Result<(), rusqlite::Error> {
     let mut stmt = conn.prepare(
-        "INSERT INTO projects_activities (project_id, activity_id, document_name) 
-         SELECT ?1, id, COALESCE(window_title, 'Document ' || id) 
-         FROM activity_full_text 
+        "INSERT INTO projects_activities (project_id, activity_id, document_name, full_document_text)
+         SELECT ?1, id, COALESCE(window_title, 'Document ' || id), edited_full_text
+         FROM activity_full_text
          WHERE id = ?2"
     )?;
 
     for &activity_id in activity_ids {
         stmt.execute(params![project_id, activity_id])?;
     }
-
     Ok(())
 }
 
@@ -118,4 +117,18 @@ pub fn fetch_activities_by_project_id(
     }
 
     Ok((ids, names))
+}
+
+pub fn get_activity_text_from_project(
+    conn: &Connection,
+    project_id: i64,
+    activity_id: i64,
+) -> Result<String, rusqlite::Error> {
+    let mut stmt = conn.prepare(
+        "SELECT full_document_text 
+         FROM projects_activities 
+         WHERE project_id = ?1 AND activity_id = ?2"
+    )?;
+    
+    stmt.query_row(params![project_id, activity_id], |row| row.get(0))
 }

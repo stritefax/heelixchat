@@ -53,8 +53,7 @@ export const deleteActivity = async (id: number) => {
   }
 };
 
-export const getFullActivityText = async (id: number): Promise<string> => {
-  return await invoke<string>("get_activity_full_text_by_id", {
-    id,
-  });
+
+export const getFullActivityText = async (projectId: number, activityId: number): Promise<string> => {
+  return await invoke<string>('get_app_project_activity_text', { projectId, activityId });
 };
