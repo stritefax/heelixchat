@@ -48,8 +48,8 @@ struct Content {
 
 const ANTHROPIC_URL: &str = "https://api.anthropic.com/v1/messages";
 const ANTRHOPIC_MODEL: &str = "claude-3-haiku-20240307";
-const ANTRHOPIC_MAIN_MODEL: &str = "claude-3-5-sonnet-20240620";
-const ANTRHOPIC_MODEL_CHEAP: &str = "claude-3-sonnet-20240229";
+const ANTRHOPIC_MAIN_MODEL: &str = "claude-3-5-sonnet-20241022";
+const ANTRHOPIC_MODEL_CHEAP: &str = "claude-3-5-haiku-20241022";
 
 #[tauri::command]
 pub async fn send_prompt_to_llm(

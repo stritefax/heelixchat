@@ -89,6 +89,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       await onSave({
         name: data.name,
         activities: projectActivities.map((activity) => activity.id),
+        activity_names: projectActivities.map((activity) => activity.title), // Add this line
       });
       onClose();
     } finally {
@@ -98,13 +99,14 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
 
   const handleUpdate = async (data: FormValues) => {
     if (!currentProject) return;
-    
+  
     setIsSubmittingForm(true);
     try {
       await onUpdate({
         id: currentProject.id,
         name: data.name,
         activities: projectActivities.map((activity) => activity.id),
+        activity_names: projectActivities.map((activity) => activity.title), // Add this line
       });
       onClose();
     } finally {

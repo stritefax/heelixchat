@@ -17,9 +17,8 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
 import type { StoredMessage, Chat } from "./types";
 import { debounce } from "lodash";
-import { FileText, X } from "lucide-react";
+import { FileText, X, History, Folder } from "lucide-react";
 import { ScreenContainer } from "@/components/layout";
-import { History, Folder } from "lucide-react";
 
 import {
   UserMessage,
@@ -30,6 +29,7 @@ import {
   SettingsModal,
   SelectActivityModal,
   NewConversationMessage,
+  TipTapEditor,
 } from "./components";
 import { useGlobalSettings } from "../../Providers/SettingsProvider";
 import { DocumentFootnote } from "./components";
@@ -94,6 +94,11 @@ const ActivityPreview = styled.div`
   font-size: 12px;
 `;
 
+interface SelectedActivity {
+  id: number;
+  text: string;
+}
+
 export const ChatScreen: FC = () => {
   const [userInput, setUserInput] = useState("");
   const toast = useToast();
@@ -112,11 +117,11 @@ export const ChatScreen: FC = () => {
   const [dailyOutputTokens, setDailyOutputTokens] = useState(0);
   const [lastResetTimestamp, setLastResetTimestamp] = useState("");
   const [isActivityHistoryOpen, setIsActivityHistoryOpen] = useState(false);
-  const [selectedActivityTexts, setSelectedActivityTexts] = useState<string[]>(
-    []
-  );
+  const [selectedActivityTexts, setSelectedActivityTexts] = useState<string[]>([]);
   const [combinedActivityText, setCombinedActivityText] = useState("");
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  
   const { 
     state,
     getSelectedProject, 
@@ -126,17 +131,14 @@ export const ChatScreen: FC = () => {
     selectActivity
   } = useProject();
   const [selectedActivityText, setSelectedActivityText] = useState("");
-  const handleActivityHistoryToggle = () => {
-    setIsActivityHistoryOpen(!isActivityHistoryOpen);
-  };
 
   const {
     isOpen: isSettingsOpen,
     onOpen: onSettingsOpen,
     onClose: onSettingsClose,
   } = useDisclosure();
-  const [activeSettingsCategory, setActiveSettingsCategory] =
-    useState("privacy");
+  
+  const [activeSettingsCategory, setActiveSettingsCategory] = useState("privacy");
   const { settings } = useGlobalSettings();
 
   const debouncedScroll = useMemo(
@@ -196,15 +198,13 @@ export const ChatScreen: FC = () => {
       setSelectedActivityText("");
     }
   }, [state.selectedActivityId]);
+
   const fetchChats = async () => {
     try {
       messageRef.current = null;
       const allChats = await invoke<Chat[]>("get_all_chats");
       setChats(allChats);
-      if (
-        selectedChatId &&
-        !allChats.some((chat) => chat.id === selectedChatId)
-      ) {
+      if (selectedChatId && !allChats.some((chat) => chat.id === selectedChatId)) {
         setSelectedChatId(undefined);
         setDialogue([]);
       }
@@ -216,10 +216,7 @@ export const ChatScreen: FC = () => {
   const fetchMessages = async (chatId: number) => {
     try {
       setIsLoadingExistingChat(true);
-      const messages = await invoke<StoredMessage[]>(
-        "get_messages_by_chat_id",
-        { chatId }
-      );
+      const messages = await invoke<StoredMessage[]>("get_messages_by_chat_id", { chatId });
       setDialogue(messages);
       setIsFirstMessage(messages.length === 0);
     } catch (error) {
@@ -229,16 +226,26 @@ export const ChatScreen: FC = () => {
     }
   };
 
-  const handleActivitySelect = (
-    selectedActivities: Array<{ id: number; text: string }>
-  ) => {
+  const handleEditText = () => {
+    setIsEditing(true);
+  };
+
+  const handleSaveText = async (newContent: string) => {
+    if (state.selectedActivityId) {
+      await invoke<void>('update_project_activity_text', {
+        activityId: state.selectedActivityId,
+        text: newContent,
+      });
+      await fetchSelectedActivityText();
+      setIsEditing(false);
+    }
+  };
+
+  const handleActivitySelect = (selectedActivities: SelectedActivity[]) => {
     const newTexts = selectedActivities.map((activity) => activity.text);
     setSelectedActivityTexts((prevTexts) => {
       const updatedTexts = [...prevTexts, ...newTexts];
-      // Combine all texts into a single string
       const combined = updatedTexts.join("\n\n");
-
-      console.log("COMBINED_TEXT_THINGY", combined);
       setCombinedActivityText(combined);
       return updatedTexts;
     });
@@ -248,7 +255,6 @@ export const ChatScreen: FC = () => {
   const handleRemoveActivity = (index: number) => {
     setSelectedActivityTexts((prevTexts) => {
       const updatedTexts = prevTexts.filter((_, i) => i !== index);
-      // Recombine the remaining texts
       const combined = updatedTexts.join("\n\n");
       setCombinedActivityText(combined);
       return updatedTexts;
@@ -259,19 +265,18 @@ export const ChatScreen: FC = () => {
     if (selectedChatId) {
       setDialogue([]);
       fetchMessages(selectedChatId);
-      selectActivity(null); // Add this line to clear selected activity
+      selectActivity(null);
     } else {
       setDialogue([]);
-      selectActivity(null); // Add this line here too to handle both cases
+      selectActivity(null);
     }
   }, [selectedChatId]);
 
   const generateName = async (chatId: number, userInput: string) => {
     try {
-      const name =
-        settings.api_choice === "openai"
-          ? await invoke<string>("generate_conversation_name", { userInput })
-          : await invoke<string>("name_conversation", { userInput });
+      const name = settings.api_choice === "openai"
+        ? await invoke<string>("generate_conversation_name", { userInput })
+        : await invoke<string>("name_conversation", { userInput });
       await invoke<boolean>("update_chat_name", { chatId, name });
       setChats((prevChats) =>
         prevChats.map((chat) => (chat.id === chatId ? { ...chat, name } : chat))
@@ -303,7 +308,6 @@ export const ChatScreen: FC = () => {
     }
     try {
       const chatId = await invoke<number>("create_chat", { name: "New Chat" });
-      console.log("New chat created with ID:", chatId);
       const currentTime = new Date().toISOString();
       generateName(chatId, userInput);
       setChats([
@@ -332,7 +336,6 @@ export const ChatScreen: FC = () => {
         currentDate.getMonth() !== lastResetDate.getMonth() ||
         currentDate.getFullYear() !== lastResetDate.getFullYear()
       ) {
-        // It's a new day, reset the tokens
         setDailyOutputTokens(0);
         setLastResetTimestamp(currentDate.toISOString());
         saveTokenData(0);
@@ -360,8 +363,7 @@ export const ChatScreen: FC = () => {
             id: Date.now(),
             chat_id: chatId,
             role: "assistant",
-            content:
-              "You have reached your daily token limit. The limit resets at 12am.",
+            content: "You have reached your daily token limit. The limit resets at 12am.",
             created_at: new Date().toISOString(),
           },
         ]);
@@ -369,29 +371,20 @@ export const ChatScreen: FC = () => {
         setIsGenerating(false);
         return;
       }
-      console.log("Sending combinedActivityText to LLM:", combinedActivityText);
 
       if (settings.api_choice === "openai") {
         await invoke("send_prompt_to_openai", {
           conversationHistory: fullConversation,
           isFirstMessage,
-          combinedActivityText:
-            (await getSelectedProjectActivityText()) +
-            "/n" +
-            combinedActivityText, // Add this line
+          combinedActivityText: (await getSelectedProjectActivityText()) + "\n" + combinedActivityText,
         });
       } else {
         await invoke("send_prompt_to_llm", {
           conversationHistory: fullConversation,
           isFirstMessage,
-          combinedActivityText:
-            (await getSelectedProjectActivityText()) +
-            "/n" +
-            combinedActivityText, // Add this line
+          combinedActivityText: (await getSelectedProjectActivityText()) + "\n" + combinedActivityText,
         });
       }
-
-      console.log("Conversation history sent to LLM");
 
       await invoke("create_message", {
         chatId,
@@ -402,8 +395,7 @@ export const ChatScreen: FC = () => {
       setSelectedActivityTexts([]);
       setCombinedActivityText("");
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "An unexpected error occurred";
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       console.error("Error from Claude API:", errorMessage);
       setDialogue((prevDialogue) => [
         ...prevDialogue,
@@ -422,8 +414,7 @@ export const ChatScreen: FC = () => {
     if (settings.api_choice === "openai" && !settings.api_key_open_ai) {
       toast({
         title: "Api key not provided",
-        description:
-          "Provide the necessary keys in the Settings > General to continue",
+        description: "Provide the necessary keys in the Settings > General to continue",
         status: "error",
         duration: 9000,
         isClosable: true,
@@ -431,14 +422,10 @@ export const ChatScreen: FC = () => {
       onSettingsOpen();
       return;
     }
-    if (
-      (settings.api_choice === "claude" && !settings.api_key_claude) ||
-      !settings.api_key_open_ai
-    ) {
+    if ((settings.api_choice === "claude" && !settings.api_key_claude) || !settings.api_key_open_ai) {
       toast({
         title: "Api keys not provided",
-        description:
-          "Claude doesn't yet provide vector embedding due to this limitation both claude and Chat GPT keys need to be provided. Provide the necessary keys in the Settings > General to continue.",
+        description: "Claude doesn't yet provide vector embedding due to this limitation both claude and Chat GPT keys need to be provided. Provide the necessary keys in the Settings > General to continue.",
         status: "error",
         duration: 9000,
         isClosable: true,
@@ -494,7 +481,7 @@ export const ChatScreen: FC = () => {
             const newMessage = {
               id: Date.now(),
               chat_id: chatId,
-              role: "assistant" as "assistant",
+              role: "assistant" as const,
               content: assistantMessage,
               created_at: new Date().toISOString(),
             };
@@ -525,6 +512,10 @@ export const ChatScreen: FC = () => {
     setIsChatHistoryOpen(!isChatHistoryOpen);
   };
 
+  const handleActivityHistoryToggle = () => {
+    setIsActivityHistoryOpen(!isActivityHistoryOpen);
+  };
+
   const handleDeleteChat = async (chatId: number) => {
     try {
       await invoke("delete_chat", { chatId });
@@ -538,6 +529,7 @@ export const ChatScreen: FC = () => {
       console.error("Error deleting chat:", error);
     }
   };
+
   const isMacOS = useRef<boolean | null>(null);
   const osCheckComplete = useRef<boolean>(false);
 
@@ -659,7 +651,7 @@ export const ChatScreen: FC = () => {
             ),
           },
           {
-            icon: <Folder size={20} />,  // CHANGED THIS LINE
+            icon: <Folder size={20} />,
             text: "Projects",
             content: (
               <Projects
@@ -672,16 +664,20 @@ export const ChatScreen: FC = () => {
       />
       <ChatContainer>
         {selectedActivityText ? (
-  <Box 
-  width="100%"
-  maxWidth="var(--breakpoint-medium)" 
-  padding="var(--space-l) var(--space-l) 0 var(--space-l)"
->
-  <Text type="m">
-    {selectedActivityText}
-  </Text>
-</Box>
-) : (
+          <Box 
+            width="100%"
+            maxWidth="var(--breakpoint-medium)" 
+            padding="var(--space-l) var(--space-l) 0 var(--space-l)"
+          >
+            <TipTapEditor
+              content={selectedActivityText}
+              isEditing={isEditing}
+              onEdit={handleEditText}
+              onSave={handleSaveText}
+              onCancel={() => setIsEditing(false)}
+            />
+          </Box>
+        ) : (
           <>
             {dialogue.length === 0 && !isLoadingExistingChat ? (
               <NewConversationMessage />

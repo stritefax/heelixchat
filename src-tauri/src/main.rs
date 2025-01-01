@@ -36,7 +36,7 @@ use crate::repository::activity_log_repository;
 use crate::repository::chat_db_repository;
 use crate::repository::permissions_repository::{get_permissions, update_permission};
 use crate::repository::project_repository::{
-    delete_project, fetch_all_projects, save_project, update_project,get_activity_text_from_project,
+    delete_project, fetch_all_projects, save_project, update_project,get_activity_text_from_project, update_activity_text,
 };
 use crate::repository::settings_repository::{get_setting, get_settings, insert_or_update_setting};
 use tauri_plugin_autostart::MacosLauncher;
@@ -152,6 +152,7 @@ async fn main() {
             delete_activity,
             get_activity_full_text_by_id,
             get_app_project_activity_text,
+            update_project_activity_text,
         ])
         .manage(AppState {
             db: Default::default(),
@@ -486,6 +487,17 @@ fn get_app_project_activity_text(
 ) -> Result<String, ()> {
     let text = app_handle.db(|database| get_activity_text_from_project(database, project_id, activity_id).unwrap());
     return Ok(text);
+}
+
+#[tauri::command]
+fn update_project_activity_text(
+    app_handle: AppHandle,
+    activity_id: i64,
+    text: &str,
+) -> Result<(), String> {
+    app_handle
+        .db(|db| update_activity_text(db, activity_id, text))
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(target_os = "macos")]

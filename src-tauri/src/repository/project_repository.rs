@@ -97,17 +97,17 @@ pub fn fetch_activities_by_project_id(
     project_id: i64,
 ) -> Result<(Vec<i64>, Vec<String>), rusqlite::Error> {
     let mut stmt = conn.prepare(
-        "SELECT a.id, pa.document_name 
-         FROM projects_activities pa 
-         INNER JOIN activity_full_text a ON pa.activity_id = a.id 
-         WHERE pa.project_id = ?1"
+        "SELECT id as activity_id, document_name 
+         FROM projects_activities
+         WHERE project_id = ?1
+         ORDER BY id"  // Order by the new id field
     )?;
-    
+
     let mut ids = Vec::new();
     let mut names = Vec::new();
-    
+
     let rows = stmt.query_map(params![project_id], |row| {
-        Ok((row.get::<_, i64>("id")?, row.get::<_, String>("document_name")?))
+        Ok((row.get::<_, i64>("activity_id")?, row.get::<_, String>("document_name")?))
     })?;
 
     for row in rows {
@@ -118,7 +118,6 @@ pub fn fetch_activities_by_project_id(
 
     Ok((ids, names))
 }
-
 pub fn get_activity_text_from_project(
     conn: &Connection,
     project_id: i64,
@@ -127,8 +126,20 @@ pub fn get_activity_text_from_project(
     let mut stmt = conn.prepare(
         "SELECT full_document_text 
          FROM projects_activities 
-         WHERE project_id = ?1 AND activity_id = ?2"
+         WHERE project_id = ?1 AND id = ?2"  // Use id but keep activity_id in the interface
     )?;
     
     stmt.query_row(params![project_id, activity_id], |row| row.get(0))
+}
+
+pub fn update_activity_text(
+    conn: &Connection,
+    activity_id: i64,
+    text: &str,
+) -> Result<(), rusqlite::Error> {
+    conn.execute(
+        "UPDATE projects_activities SET full_document_text = ?1 WHERE id = ?2",
+        params![text, activity_id],
+    )?;
+    Ok(())
 }
