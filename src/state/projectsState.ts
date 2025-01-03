@@ -15,20 +15,24 @@ type ProjectAction =
   | { type: "select"; payload: Project["id"] | undefined }
   | { type: "update"; payload: Project }
   | { type: "delete"; payload: Project["id"] }
-  | { type: "selectActivity"; payload: number | null };
+  | { type: "selectActivity"; payload: number | null }
+  | { type: "updateActivityName"; payload: { projectId: number; activityId: number; name: string } };
 
-const projectReducer = (prev: ProjectState, action: ProjectAction) => {
+// Reducer
+const projectReducer = (prev: ProjectState, action: ProjectAction): ProjectState => {
   switch (action.type) {
     case "set":
       return {
         ...prev,
         projects: action.payload,
       };
+
     case "select":
       return {
         ...prev,
         selectedProject: action.payload,
       };
+
     case "update":
       const projectIndex = prev.projects.findIndex(
         (project) => project.id === action.payload.id
@@ -50,9 +54,30 @@ const projectReducer = (prev: ProjectState, action: ProjectAction) => {
         ...prev,
         selectedActivityId: action.payload,
       };
+
+    case "updateActivityName":
+      return {
+        ...prev,
+        projects: prev.projects.map(project =>
+          project.id === action.payload.projectId
+            ? {
+                ...project,
+                activity_names: project.activity_names.map((name, idx) =>
+                  project.activities[idx] === action.payload.activityId
+                    ? action.payload.name
+                    : name
+                ),
+              }
+            : project
+        ),
+      };
+
+    default:
+      return prev;
   }
 };
 
+// Atom
 export const projectAtom = atomWithReducer<ProjectState, ProjectAction>(
   {
     projects: [],
@@ -96,6 +121,17 @@ export const useProject = () => {
   const selectActivity = (activityId: number | null) =>
     dispatch({ type: "selectActivity", payload: activityId });
 
+  const updateActivityName = async (activityId: number, name: string) => {
+    const selectedProject = getSelectedProject();
+    if (selectedProject) {
+      await projectService.updateActivityName(activityId, name);
+      dispatch({
+        type: "updateActivityName",
+        payload: { projectId: selectedProject.id, activityId, name },
+      });
+    }
+  };
+
   const getSelectedProject = () => {
     return state.projects.find((project) => project.id === state.selectedProject);
   };
@@ -134,5 +170,6 @@ export const useProject = () => {
     addProject,
     deleteProject,
     updateProject,
+    updateActivityName,
   };
 };

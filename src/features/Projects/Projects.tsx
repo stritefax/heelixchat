@@ -11,7 +11,8 @@ import {
   Badge,
   Tooltip,
   ButtonGroup,
-  Divider
+  Divider,
+  Input
 } from "@chakra-ui/react";
 import { Text } from "@heelix-app/design";
 import { useProject } from "../../state";
@@ -56,7 +57,14 @@ export const Projects: FC<{
   selectedActivityId: number | null;
   onSelectActivity: (activityId: number | null) => void;
 }> = ({ selectedActivityId, onSelectActivity }) => {
-  const { state, selectProject, addProject, deleteProject, updateProject } = useProject();
+  const { 
+    state, 
+    selectProject, 
+    addProject, 
+    deleteProject, 
+    updateProject,
+    updateActivityName 
+  } = useProject();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<null | number>(null);
 
@@ -111,6 +119,7 @@ export const Projects: FC<{
         onDeleteProject={handleDeleteProject}
         selectedActivityId={selectedActivityId}
         onSelectActivity={handleActivitySelect}
+        onUpdateActivityName={updateActivityName}
       />
       
       <ProjectModal
@@ -134,6 +143,7 @@ const ProjectSelector: FC<{
   onDeleteProject: (project: Project) => void;
   selectedActivityId: number | null;
   onSelectActivity: (activityId: number) => void;
+  onUpdateActivityName: (activityId: number, name: string) => void;
 }> = ({
   projects,
   selectedProject,
@@ -143,15 +153,40 @@ const ProjectSelector: FC<{
   onEditProject,
   onDeleteProject,
   selectedActivityId,
-  onSelectActivity
+  onSelectActivity,
+  onUpdateActivityName
 }) => {
+  const [editingActivityId, setEditingActivityId] = useState<number | null>(null);
+  const [editingName, setEditingName] = useState("");
+
   const projectActivities = useMemo(() => {
     if (!selectedProject) return [];
     return selectedProject.activities.map((activityId, index) => ({
       id: activityId,
+      activity_id: selectedProject.activity_ids[index],
       name: selectedProject.activity_names[index] || `Document ${activityId}`
     }));
-}, [selectedProject]);
+  }, [selectedProject]);
+
+  const handleStartEdit = (activity: { id: number; name: string }) => {
+    setEditingActivityId(activity.id);
+    setEditingName(activity.name);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingActivityId && editingName.trim()) {
+      onUpdateActivityName(editingActivityId, editingName.trim());
+      setEditingActivityId(null);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      setEditingActivityId(null);
+    }
+  };
 
   return (
     <Flex direction="column" w="full" gap={4}>
@@ -264,13 +299,50 @@ const ProjectSelector: FC<{
                 _hover={{ bg: 'gray.50' }}
                 transition="all 0.2s"
                 bg={selectedActivityId === activity.id ? 'blue.50' : 'white'}
-                onClick={() => onSelectActivity(activity.id)}
+                onClick={() => editingActivityId !== activity.id && onSelectActivity(activity.id)}
                 cursor="pointer"
               >
-                <Flex align="center" gap={2}>
+                <Flex align="center" gap={2} flex={1}>
                   <File size={16} />
-                  <Text type="m">{activity.name}</Text>
+                  {editingActivityId === activity.id ? (
+                    <Input
+                      value={editingName}
+                      onChange={(e) => setEditingName(e.target.value)}
+                      onBlur={handleSaveEdit}
+                      onKeyDown={handleKeyDown}
+                      onClick={(e) => e.stopPropagation()}
+                      autoFocus
+                      size="sm"
+                      variant="unstyled"
+                      px={2}
+                    />
+                  ) : (
+                    <div 
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        handleStartEdit(activity);
+                      }}
+                    >
+                      <Text 
+                        type="m"
+                      >
+                        {activity.name}
+                      </Text>
+                    </div>
+                  )}
                 </Flex>
+                {!editingActivityId && (
+                  <IconButton
+                    aria-label="Edit document name"
+                    icon={<Edit size={14} />}
+                    size="xs"
+                    variant="ghost"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleStartEdit(activity);
+                    }}
+                  />
+                )}
               </Flex>
             ))}
             {projectActivities.length === 0 && (

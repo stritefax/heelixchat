@@ -4,6 +4,7 @@ use reqwest::{Client, Response};
 use serde::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashSet;
+use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
 use crate::configuration::state::ServiceAccess;
@@ -30,7 +31,6 @@ pub struct Message {
 
 #[derive(Deserialize)]
 struct ClaudeResponse {
-    // id: String,
     content: Vec<Content>,
     usage: Usage,
 }
@@ -63,37 +63,40 @@ pub async fn send_prompt_to_llm(
     let setting_openai =
         app_handle.db(|db| get_setting(db, "api_key_open_ai").expect("Failed on api_key_open_ai"));
 
-    let timeout = std::time::Duration::from_secs(60);
-    let relevance_client = Client::builder()
-        .timeout(timeout)
+    // Configure client with keep-alive and proper timeouts
+    let client = Client::builder()
+        .timeout(Duration::from_secs(180))  // Increased timeout
+        .tcp_keepalive(Duration::from_secs(60))  // Keep connection alive for 60 seconds
+        .pool_idle_timeout(Duration::from_secs(90))  // Allow connections to stay in pool
+        .pool_max_idle_per_host(2)  // Keep up to 2 idle connections per host
+        .connect_timeout(Duration::from_secs(30))
         .build()
         .map_err(|e| format!("Failed to create client: {}", e))?;
+
     let mut filtered_context = String::new();
     let mut window_titles = Vec::new();
     debug!("Combined activity text: {}", combined_activity_text);
 
     if is_first_message {
-        // Perform similarity search and relevance filtering only for the first message
         let user_prompt = conversation_history
             .last()
             .map(|msg| msg.content.clone())
             .unwrap_or_default();
         info!("User Prompt: {}", user_prompt);
+        
         let relevant_keywords =
             match identify_relevant_keywords(&user_prompt, &setting.setting_value).await {
                 Ok(keywords) => keywords,
                 Err(err) => {
                     error!(
-                    "Keyword extraction failed: {}. Using the entire prompt as fallback keywords.",
-                    err
-                );
-                    // Use entire prompt as fallback keywords
+                        "Keyword extraction failed: {}. Using the entire prompt as fallback keywords.",
+                        err
+                    );
                     vec![user_prompt.clone()]
                 }
             };
-        // Perform similarity search in OasysDB
-        info!("Getting database instance");
 
+        info!("Getting database instance");
         let hnsw_bind = database::get_vector_db(&app_handle)
             .await
             .expect("Database initialization failed!");
@@ -108,21 +111,12 @@ pub async fn send_prompt_to_llm(
             .await
             .map_err(|e| format!("Similarity search failed: {}", e))?;
 
-        // Collect the results into a vector that we can use multiple times
         let similar_ids_vec: Vec<(i64, f32)> = similar_ids_with_distances
             .into_iter()
             .map(|(id, distance)| (id as i64, distance))
             .collect();
 
         let similar_ids: Vec<i64> = similar_ids_vec.iter().map(|(id, _)| *id).collect();
-
-        // let filtered_ids = app_handle
-        // .db(|db| {
-        //     let result = filter_similar_ids(db, similar_ids);
-        //      return result;
-        //  })
-        //.map_err(|e| format!("Failed to retrieve additional IDs from SQL database: {}", e))?;
-        //  debug!("Filtered IDs: {:?}", filtered_ids);
 
         let additional_ids = app_handle
             .db(|db| {
@@ -136,8 +130,7 @@ pub async fn send_prompt_to_llm(
         all_ids_set.extend(similar_ids);
         all_ids_set.extend(additional_ids);
 
-        // Retrieve the corresponding documents from the SQL database
-        let mut context = String::new(); // Assuming context is initialized earlier
+        let mut context = String::new();
 
         for (index, document_id) in all_ids_set.iter().enumerate() {
             let result: Option<(String, String)> = app_handle
@@ -165,11 +158,9 @@ pub async fn send_prompt_to_llm(
         if context.is_empty() {
             context.push_str("No relevant documents found.\n\n");
         }
-        // Continue with any further processing that requires the context
 
         info!("Relevant Keywords: {:?}", relevant_keywords);
 
-        // Send the documents to the Claude model for relevance filtering
         let relevance_system_prompt = format!( "The user's prompt is: {}\n\n. You are an intelligent and logical personal assistant. Your task is to carefully review the content of provided documents and output solely a maximum of four numerical IDs of the documents that are directly related to the user prompt and are highly likely to help in answering the user's prompt (corresponding to the Document ID at the beginning of each document). If an individual document is not extremely relevant to the user prompt and the user prompt can be successfully answered without that document, do not include it in the list of returned documents.
 
         Examples of relevant and irrelevant documents in different business scenarios:
@@ -252,11 +243,12 @@ pub async fn send_prompt_to_llm(
             stream: false,
         };
 
-        let relevance_response = relevance_client
+        let relevance_response = client
             .post(ANTHROPIC_URL)
             .header("Content-Type", "application/json")
             .header("x-api-key", &setting.setting_value)
             .header("anthropic-version", "2023-06-01")
+            .header("Connection", "keep-alive")  // Added keep-alive header
             .json(&relevance_request_body)
             .send()
             .await
@@ -270,11 +262,11 @@ pub async fn send_prompt_to_llm(
                 .await
                 .map_err(|e| format!("Failed to parse relevance filtering response: {}", e))?;
 
-            // Log token usage for relevance filtering
             info!(
                 "Relevance filtering token usage - Input: {}, Output: {}",
                 relevance_result.usage.input_tokens, relevance_result.usage.output_tokens
             );
+
             let relevant_document_ids: Vec<i64> = relevance_result
                 .content
                 .first()
@@ -290,7 +282,6 @@ pub async fn send_prompt_to_llm(
 
             debug!("Relevant document IDs: {:?}", relevant_document_ids);
 
-            // Retrieve the full text of the highly relevant documents
             for document_id in relevant_document_ids {
                 let result: Option<(String, String)> = app_handle
                     .db(|db| get_activity_full_text_by_id(db, document_id, Some(10000)))
@@ -325,12 +316,11 @@ pub async fn send_prompt_to_llm(
         }
     }
 
-    // Prepare the conversation history for the Claude API
     let conversation_history_content = conversation_history
         .iter()
-        .rev() // Reverse the order of messages
-        .skip(1) // Skip the last user message
-        .rev() // Reverse the order back to original
+        .rev()
+        .skip(1)
+        .rev()
         .map(|message| {
             let role = if message.role == "user" {
                 "User"
@@ -345,7 +335,7 @@ pub async fn send_prompt_to_llm(
     let system_prompt = format!("You are Heelix chat app that is powered by Anthropic LLM. Heelix chat is developed by Heelix Technologies. Only identify yourself as such. Provide answer in markdown format. The following documents were retrieved from the user's device and may help in answering the prompt. Review them carefully to decide if they are relevant, if they are - using them to answer the query, but if they are not relevant to query, ignore them completely when responding, respond as if they were not there without mentioning having received them at all.{}\n\n
 Attached is the conversation history for context only. When answering, only give a single assistant response, do not also continue the conversation with a user answer.):
 {}\n\n", filtered_context, conversation_history_content);
-    // hello
+
     debug!("Sending final response generation request to Claude API...");
     let mut user_message = conversation_history
         .last()
@@ -370,21 +360,17 @@ Attached is the conversation history for context only. When answering, only give
         stream: true,
     };
 
-    let response_client = Client::builder()
-        .timeout(timeout)
-        .build()
-        .map_err(|e| format!("Failed to create response client: {}", e))?;
-
     let mut attempt = 0;
     let max_retries = 3;
-    let mut delay = std::time::Duration::from_secs(1); // Initial delay
+    let mut delay = Duration::from_secs(1);
 
     loop {
-        let response = response_client
+        let response = client
             .post(ANTHROPIC_URL)
             .header("Content-Type", "application/json")
             .header("x-api-key", &setting.setting_value)
             .header("anthropic-version", "2023-06-01")
+            .header("Connection", "keep-alive")
             .json(&request_body)
             .send()
             .await;
@@ -401,12 +387,11 @@ Attached is the conversation history for context only. When answering, only give
                         e, attempt, max_retries
                     );
                     tokio::time::sleep(delay).await;
-                    delay *= 1;
+                    delay *= 2;  // Exponential backoff
                 } else {
                     let error_message =
                         "Apologies, Claude API appears to be down right now - please try again later or switch to OpenAI for the time being";
                     error!("Request failed after {} attempts: {}", max_retries, e);
-                    // Emit the error message to the frontend
                     app_handle
                         .get_window("main")
                         .expect("Failed to get main window")
@@ -431,72 +416,105 @@ async fn handle_success_response(
         let mut completion = String::new();
         let mut input_tokens = 0;
         let mut output_tokens = 0;
+        let mut buffer: Vec<u8> = Vec::new();  // Explicitly specify Vec<u8> for byte storage
 
         while let Some(chunk) = stream.next().await {
             let chunk = chunk.map_err(|e| format!("Failed to read chunk: {}", e))?;
             let text = String::from_utf8_lossy(&chunk);
 
             for line in text.lines() {
-                if line.starts_with("data:") {
-                    let data = line[5..].trim();
+                if !line.starts_with("data: ") {
+                    continue;
+                }
+                
+                let data = line[6..].trim();
+                
+                // Skip empty data lines
+                if data.is_empty() {
+                    continue;
+                }
 
-                    if data.starts_with("{") {
-                        let json_data: serde_json::Value = serde_json::from_str(data)
-                            .map_err(|e| format!("Failed to parse JSON: {}", e))?;
+                // Handle ping events - these keep the connection alive
+                if data == "{\"type\": \"ping\"}" {
+                    debug!("Received ping event");
+                    continue;
+                }
 
-                        if let Some(event_type) = json_data["type"].as_str() {
-                            match event_type {
-                                "message_start" => {
-                                    // Extract initial token usage
-                                    if let Some(usage) = json_data["message"]["usage"].as_object() {
-                                        input_tokens =
-                                            usage["input_tokens"].as_u64().unwrap_or(0) as u32;
-                                        output_tokens =
-                                            usage["output_tokens"].as_u64().unwrap_or(0) as u32;
-                                    }
-                                }
-                                "content_block_delta" => {
-                                    if let Some(delta) = json_data["delta"]["text"].as_str() {
-                                        completion.push_str(delta);
-                                    }
-                                }
-                                "message_delta" => {
-                                    // Update token usage
-                                    if let Some(usage) = json_data["usage"].as_object() {
-                                        output_tokens =
-                                            usage["output_tokens"].as_u64().unwrap_or(0) as u32;
-                                    }
-                                }
-                                _ => {}
+                // Parse the event data
+                let json_data: serde_json::Value = match serde_json::from_str(data) {
+                    Ok(data) => data,
+                    Err(e) => {
+                        error!("Failed to parse event data: {}", e);
+                        continue;
+                    }
+                };
+
+                // Handle error events
+                if let Some("error") = json_data["type"].as_str() {
+                    if let Some(error) = json_data["error"].as_object() {
+                        let error_type = error["type"].as_str().unwrap_or("unknown");
+                        let error_message = error["message"].as_str().unwrap_or("Unknown error");
+                        
+                        error!("Received error event: {} - {}", error_type, error_message);
+                        
+                        match error_type {
+                            "overloaded_error" => {
+                                return Err("Service is currently overloaded. Please try again later.".to_string());
+                            }
+                            _ => {
+                                return Err(format!("Stream error: {}", error_message));
                             }
                         }
                     }
                 }
+
+                // Handle different event types
+                match json_data["type"].as_str() {
+                    Some("message_start") => {
+                        if let Some(usage) = json_data["message"]["usage"].as_object() {
+                            input_tokens = usage["input_tokens"].as_u64().unwrap_or(0) as u32;
+                            output_tokens = usage["output_tokens"].as_u64().unwrap_or(0) as u32;
+                        }
+                    }
+                    Some("content_block_delta") => {
+                        if let Some(delta) = json_data["delta"]["text"].as_str() {
+                            completion.push_str(delta);
+                            
+                            // Emit updates to frontend more frequently
+                            app_handle
+                                .get_window("main")
+                                .expect("Failed to get main window")
+                                .emit("llm_response", completion.clone())
+                                .map_err(|e| format!("Failed to emit response: {}", e))?;
+                        }
+                    }
+                    Some("message_delta") => {
+                        if let Some(usage) = json_data["usage"].as_object() {
+                            output_tokens = usage["output_tokens"].as_u64().unwrap_or(0) as u32;
+                        }
+                    }
+                    Some("message_stop") => {
+                        // Final emission of window titles and completion
+                        app_handle
+                            .get_window("main")
+                            .expect("Failed to get main window")
+                            .emit(
+                                "window_titles",
+                                serde_json::to_string(&window_titles).unwrap(),
+                            )
+                            .map_err(|e| format!("Failed to emit window titles: {}", e))?;
+
+                        app_handle
+                            .get_window("main")
+                            .expect("Failed to get main window")
+                            .emit("output_tokens", output_tokens)
+                            .map_err(|e| format!("Failed to emit output tokens: {}", e))?;
+                    }
+                    _ => {} // Ignore unknown event types
+                }
             }
-
-            // Emit the current completion state to the frontend
-            app_handle
-                .get_window("main")
-                .expect("Failed to get main window")
-                .emit("llm_response", completion.clone())
-                .map_err(|e| format!("Failed to emit response: {}", e))?;
-
-            // Emit the window titles to the frontend
-            app_handle
-                .get_window("main")
-                .expect("Failed to get main window")
-                .emit(
-                    "window_titles",
-                    serde_json::to_string(&window_titles).unwrap(),
-                )
-                .map_err(|e| format!("Failed to emit window titles: {}", e))?;
         }
-        app_handle
-            .get_window("main")
-            .expect("Failed to get main window")
-            .emit("output_tokens", output_tokens)
-            .map_err(|e| format!("Failed to emit output tokens: {}", e))?;
-        // Log the final token usage
+
         info!(
             "Final response token usage - Input: {}, Output: {}",
             input_tokens, output_tokens
@@ -520,7 +538,15 @@ pub async fn name_conversation(
 ) -> Result<String, String> {
     let setting =
         app_handle.db(|db| get_setting(db, "api_key_claude").expect("Failed on api_key_claude"));
-    let client = Client::new();
+
+    // Use the same client configuration for consistency
+    let client = Client::builder()
+        .timeout(Duration::from_secs(180))
+        .tcp_keepalive(Duration::from_secs(60))
+        .pool_idle_timeout(Duration::from_secs(90))
+        .pool_max_idle_per_host(2)
+        .build()
+        .map_err(|e| format!("Failed to create client: {}", e))?;
 
     let system_prompt = format!(
         "Name the conversation based on the user input. Use a total of 18 characters or less, without quotation marks. Use proper English, don't skip spaces between words. You only need to answer with the name. The following is the user input: \n\n{}\n\n.:",
@@ -543,6 +569,7 @@ pub async fn name_conversation(
         .header("Content-Type", "application/json")
         .header("x-api-key", &setting.setting_value)
         .header("anthropic-version", "2023-06-01")
+        .header("Connection", "keep-alive")
         .json(&request_body)
         .send()
         .await
@@ -568,7 +595,14 @@ pub async fn identify_relevant_keywords(
     prompt: &str,
     api_key: &str,
 ) -> Result<Vec<String>, String> {
-    let client = Client::new();
+    let client = Client::builder()
+        .timeout(Duration::from_secs(180))
+        .tcp_keepalive(Duration::from_secs(60))
+        .pool_idle_timeout(Duration::from_secs(90))
+        .pool_max_idle_per_host(2)
+        .build()
+        .map_err(|e| format!("Failed to create client: {}", e))?;
+
     let system_prompt = r#"You are a Keyword Extraction Specialist. Your task is to extract only the keywords that MUST be present in the relevant file based on the user search, including file names, proper names (client names, correspondent names), function names. These keywords should be as close as possible to the user's original words and should not include any additional or expanded terms. Your output should consist of a list of three or fewer prioritized keywords in JSON format, closely following user semantics.
 Examples:
 User prompt: "Update the risk assessment document for Project Delta with the latest compliance regulations."
@@ -605,8 +639,8 @@ Output the relevant keywords as a JSON array of strings, with absolutely no othe
     };
 
     let mut attempt = 0;
-    let max_retries = 3; // Maximum number of retry attempts
-    let mut delay = std::time::Duration::from_secs(1); // Initial delay
+    let max_retries = 1;
+    let mut delay = Duration::from_secs(1);
 
     loop {
         let response = client
@@ -614,6 +648,7 @@ Output the relevant keywords as a JSON array of strings, with absolutely no othe
             .header("Content-Type", "application/json")
             .header("x-api-key", api_key)
             .header("anthropic-version", "2023-06-01")
+            .header("Connection", "keep-alive")
             .json(&request_body)
             .send()
             .await;
@@ -644,9 +679,9 @@ Output the relevant keywords as a JSON array of strings, with absolutely no othe
                         attempt + 1,
                         max_retries
                     );
-                    tokio::time::sleep(delay).await; // Wait before retrying
+                    tokio::time::sleep(delay).await;
                     attempt += 1;
-                    delay *= 2; // Exponential backoff
+                    delay *= 2;
                 } else {
                     let error_message = res
                         .text()
@@ -663,9 +698,9 @@ Output the relevant keywords as a JSON array of strings, with absolutely no othe
                         attempt + 1,
                         max_retries
                     );
-                    tokio::time::sleep(delay).await; // Wait before retrying
+                    tokio::time::sleep(delay).await;
                     attempt += 1;
-                    delay *= 2; // Exponential backoff
+                    delay *= 2;
                 } else {
                     return Err("Apologies, Claude API appears to be down right now - please try again later or switch to OpenAI for the time being".to_string());
                 }

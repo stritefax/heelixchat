@@ -74,6 +74,7 @@ pub fn fetch_all_projects(conn: &Connection) -> Result<Vec<Project>, rusqlite::E
             id: row.get(0)?,
             name: row.get(1)?,
             activities: Vec::new(),
+            activity_ids: Vec::new(),
             activity_names: Vec::new(),
             created_at: row.get(2)?,
         })
@@ -82,8 +83,9 @@ pub fn fetch_all_projects(conn: &Connection) -> Result<Vec<Project>, rusqlite::E
     let mut projects = Vec::new();
     for project in project_iter {
         let mut project = project?;
-        let (ids, names) = fetch_activities_by_project_id(conn, project.id)?;
+        let (ids, activity_ids, names) = fetch_activities_by_project_id(conn, project.id)?;
         project.activities = ids;
+        project.activity_ids = activity_ids;
         project.activity_names = names;
         projects.push(project);
     }
@@ -91,33 +93,39 @@ pub fn fetch_all_projects(conn: &Connection) -> Result<Vec<Project>, rusqlite::E
     Ok(projects)
 }
 
-// Define a function to fetch activities by project ID
 pub fn fetch_activities_by_project_id(
     conn: &Connection,
     project_id: i64,
-) -> Result<(Vec<i64>, Vec<String>), rusqlite::Error> {
+) -> Result<(Vec<i64>, Vec<i64>, Vec<String>), rusqlite::Error> {
     let mut stmt = conn.prepare(
-        "SELECT id as activity_id, document_name 
+        "SELECT id, activity_id, document_name 
          FROM projects_activities
          WHERE project_id = ?1
-         ORDER BY id"  // Order by the new id field
+         ORDER BY id"
     )?;
 
     let mut ids = Vec::new();
+    let mut activity_ids = Vec::new();
     let mut names = Vec::new();
 
     let rows = stmt.query_map(params![project_id], |row| {
-        Ok((row.get::<_, i64>("activity_id")?, row.get::<_, String>("document_name")?))
+        Ok((
+            row.get::<_, i64>("id")?,
+            row.get::<_, i64>("activity_id")?,
+            row.get::<_, String>("document_name")?,
+        ))
     })?;
 
     for row in rows {
-        let (id, name) = row?;
+        let (id, activity_id, name) = row?;
         ids.push(id);
+        activity_ids.push(activity_id);
         names.push(name);
     }
 
-    Ok((ids, names))
+    Ok((ids, activity_ids, names))
 }
+
 pub fn get_activity_text_from_project(
     conn: &Connection,
     project_id: i64,
@@ -140,6 +148,18 @@ pub fn update_activity_text(
     conn.execute(
         "UPDATE projects_activities SET full_document_text = ?1 WHERE id = ?2",
         params![text, activity_id],
+    )?;
+    Ok(())
+}
+
+pub fn update_activity_name(
+    conn: &Connection,
+    activity_id: i64,
+    name: &str,
+) -> Result<(), rusqlite::Error> {
+    conn.execute(
+        "UPDATE projects_activities SET document_name = ?1 WHERE id = ?2",
+        params![name, activity_id],
     )?;
     Ok(())
 }

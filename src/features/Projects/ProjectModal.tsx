@@ -76,7 +76,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       setValue("name", currentProject.name);
       setProjectActivities(
         activities.filter((activity) =>
-          currentProject.activities.includes(activity.id)
+          currentProject.activity_ids.includes(activity.id)
         )
       );
     }
@@ -89,6 +89,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       await onSave({
         name: data.name,
         activities: projectActivities.map((activity) => activity.id),
+        activity_ids: projectActivities.map((activity) => activity.id), // Add this line
         activity_names: projectActivities.map((activity) => activity.title), // Add this line
       });
       onClose();
@@ -106,6 +107,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
         id: currentProject.id,
         name: data.name,
         activities: projectActivities.map((activity) => activity.id),
+        activity_ids: projectActivities.map((activity) => activity.id), // Add this line
         activity_names: projectActivities.map((activity) => activity.title), // Add this line
       });
       onClose();
