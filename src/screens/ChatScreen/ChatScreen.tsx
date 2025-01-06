@@ -433,7 +433,11 @@ export const ChatScreen: FC = () => {
       onSettingsOpen();
       return;
     }
-
+    if (selectedActivityText) {
+      selectActivity(null);
+      setSelectedActivityText("");
+    }
+    
     setIsLoading(true);
     setIsGenerating(true);
     setFirstTokenReceived(false);
@@ -619,6 +623,8 @@ export const ChatScreen: FC = () => {
     setIsGenerating(false);
     setFirstTokenReceived(false);
     setSelectedActivityTexts([]);
+    selectActivity(null);
+    setSelectedActivityText("");
   };
 
   return (

@@ -96,25 +96,25 @@ pub fn fetch_all_projects(conn: &Connection) -> Result<Vec<Project>, rusqlite::E
 pub fn fetch_activities_by_project_id(
     conn: &Connection,
     project_id: i64,
-) -> Result<(Vec<i64>, Vec<i64>, Vec<String>), rusqlite::Error> {
+) -> Result<(Vec<i64>, Vec<Option<i64>>, Vec<String>), rusqlite::Error> {
     let mut stmt = conn.prepare(
-        "SELECT id, activity_id, document_name 
-         FROM projects_activities
-         WHERE project_id = ?1
-         ORDER BY id"
+        "SELECT pa.id, pa.activity_id, pa.document_name
+         FROM projects_activities pa
+         WHERE pa.project_id = ?1
+         ORDER BY pa.id"
     )?;
-
-    let mut ids = Vec::new();
-    let mut activity_ids = Vec::new();
-    let mut names = Vec::new();
 
     let rows = stmt.query_map(params![project_id], |row| {
         Ok((
             row.get::<_, i64>("id")?,
-            row.get::<_, i64>("activity_id")?,
+            row.get::<_, Option<i64>>("activity_id")?,
             row.get::<_, String>("document_name")?,
         ))
     })?;
+
+    let mut ids = Vec::new();
+    let mut activity_ids = Vec::new();
+    let mut names = Vec::new();
 
     for row in rows {
         let (id, activity_id, name) = row?;
@@ -162,4 +162,16 @@ pub fn update_activity_name(
         params![name, activity_id],
     )?;
     Ok(())
+}
+
+pub fn add_blank_document(
+    conn: &Connection,
+    project_id: i64,
+) -> Result<i64, rusqlite::Error> {
+    conn.execute(
+        "INSERT INTO projects_activities (project_id, document_name, full_document_text) 
+         VALUES (?1, ?2, ?3)",
+        params![project_id, "New Document", "Start editing"],
+    )?;
+    Ok(conn.last_insert_rowid())
 }

@@ -63,7 +63,8 @@ export const Projects: FC<{
     addProject, 
     deleteProject, 
     updateProject,
-    updateActivityName 
+    updateActivityName,
+    addBlankActivity 
   } = useProject();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<null | number>(null);
@@ -120,6 +121,7 @@ export const Projects: FC<{
         selectedActivityId={selectedActivityId}
         onSelectActivity={handleActivitySelect}
         onUpdateActivityName={updateActivityName}
+        onAddBlankActivity={addBlankActivity}
       />
       
       <ProjectModal
@@ -144,6 +146,7 @@ const ProjectSelector: FC<{
   selectedActivityId: number | null;
   onSelectActivity: (activityId: number) => void;
   onUpdateActivityName: (activityId: number, name: string) => void;
+  onAddBlankActivity: () => Promise<number | undefined>;
 }> = ({
   projects,
   selectedProject,
@@ -154,17 +157,18 @@ const ProjectSelector: FC<{
   onDeleteProject,
   selectedActivityId,
   onSelectActivity,
-  onUpdateActivityName
+  onUpdateActivityName,
+  onAddBlankActivity
 }) => {
   const [editingActivityId, setEditingActivityId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
 
   const projectActivities = useMemo(() => {
     if (!selectedProject) return [];
-    return selectedProject.activities.map((activityId, index) => ({
-      id: activityId,
+    return selectedProject.activities.map((_, index) => ({
+      id: selectedProject.activities[index],
       activity_id: selectedProject.activity_ids[index],
-      name: selectedProject.activity_names[index] || `Document ${activityId}`
+      name: selectedProject.activity_names[index] || `Document ${selectedProject.activities[index]}`
     }));
   }, [selectedProject]);
 
@@ -185,6 +189,13 @@ const ProjectSelector: FC<{
       handleSaveEdit();
     } else if (e.key === 'Escape') {
       setEditingActivityId(null);
+    }
+  };
+
+  const handleAddNewDocument = async () => {
+    const newActivityId = await onAddBlankActivity();
+    if (newActivityId) {
+      handleStartEdit({ id: newActivityId, name: "New Document" });
     }
   };
 
@@ -270,6 +281,13 @@ const ProjectSelector: FC<{
             <Text type="m" bold>Project Documents</Text>
             <ButtonGroup size="sm" spacing={1}>
               <IconButton
+                aria-label="Add new document"
+                icon={<Plus size={16} />}
+                size="sm"
+                variant="ghost"
+                onClick={handleAddNewDocument}
+              />
+              <IconButton
                 aria-label="Edit project"
                 icon={<Edit size={16} />}
                 size="sm"
@@ -307,10 +325,10 @@ const ProjectSelector: FC<{
                   {editingActivityId === activity.id ? (
                     <Input
                       value={editingName}
-                      onChange={(e) => setEditingName(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEditingName(e.target.value)}
                       onBlur={handleSaveEdit}
                       onKeyDown={handleKeyDown}
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
                       autoFocus
                       size="sm"
                       variant="unstyled"
@@ -318,14 +336,12 @@ const ProjectSelector: FC<{
                     />
                   ) : (
                     <div 
-                      onDoubleClick={(e) => {
+                      onDoubleClick={(e: React.MouseEvent) => {
                         e.stopPropagation();
                         handleStartEdit(activity);
                       }}
                     >
-                      <Text 
-                        type="m"
-                      >
+                      <Text type="m">
                         {activity.name}
                       </Text>
                     </div>
@@ -337,7 +353,7 @@ const ProjectSelector: FC<{
                     icon={<Edit size={14} />}
                     size="xs"
                     variant="ghost"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent) => {
                       e.stopPropagation();
                       handleStartEdit(activity);
                     }}

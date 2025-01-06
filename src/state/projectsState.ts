@@ -16,7 +16,8 @@ type ProjectAction =
   | { type: "update"; payload: Project }
   | { type: "delete"; payload: Project["id"] }
   | { type: "selectActivity"; payload: number | null }
-  | { type: "updateActivityName"; payload: { projectId: number; activityId: number; name: string } };
+  | { type: "updateActivityName"; payload: { projectId: number; activityId: number; name: string } }
+  | { type: "addActivity"; payload: { projectId: number; activityId: number } };
 
 // Reducer
 const projectReducer = (prev: ProjectState, action: ProjectAction): ProjectState => {
@@ -72,18 +73,36 @@ const projectReducer = (prev: ProjectState, action: ProjectAction): ProjectState
         ),
       };
 
+    case "addActivity":
+      return {
+        ...prev,
+        projects: prev.projects.map(project =>
+          project.id === action.payload.projectId
+            ? {
+                ...project,
+                activities: [...project.activities, action.payload.activityId],
+                activity_ids: [...project.activity_ids, action.payload.activityId],
+                activity_names: [...project.activity_names, "New Document"]
+              }
+            : project
+        ),
+      };
+
     default:
       return prev;
   }
 };
 
+// Initial state
+const initialState: ProjectState = {
+  projects: [],
+  selectedProject: undefined,
+  selectedActivityId: null,
+};
+
 // Atom
 export const projectAtom = atomWithReducer<ProjectState, ProjectAction>(
-  {
-    projects: [],
-    selectedProject: undefined,
-    selectedActivityId: null,
-  },
+  initialState,
   projectReducer
 );
 
@@ -132,6 +151,18 @@ export const useProject = () => {
     }
   };
 
+  const addBlankActivity = async () => {
+    const selectedProject = getSelectedProject();
+    if (selectedProject) {
+      const newActivityId = await projectService.addBlankActivity(selectedProject.id);
+      dispatch({
+        type: "addActivity",
+        payload: { projectId: selectedProject.id, activityId: newActivityId }
+      });
+      return newActivityId;
+    }
+  };
+
   const getSelectedProject = () => {
     return state.projects.find((project) => project.id === state.selectedProject);
   };
@@ -171,5 +202,6 @@ export const useProject = () => {
     deleteProject,
     updateProject,
     updateActivityName,
+    addBlankActivity,
   };
 };
