@@ -12,6 +12,7 @@ import {
   Input,
   Spinner,
   Text,
+  ModalFooter,
 } from "@chakra-ui/react";
 import { Title } from "@heelix-app/design";
 import { ActivitySelector } from "../../components/ActivitySelector";
@@ -131,7 +132,7 @@ export const ProjectModal: React.FC<ProjectModalProps> = ({
       <ModalContent
         width="100%"
         maxWidth="800px"
-        height="70vh"
+        height="80vh"
         minHeight="300px"
         css={`
           @media (max-width: 1024px) {

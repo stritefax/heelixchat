@@ -69,6 +69,17 @@ const MessagesContainer = styled.div`
   overflow-anchor: none;
 `;
 
+const ActivityTextContainer = styled.div`
+  display: flex;
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  padding: var(--space-l) var(--space-l) 0 var(--space-l);
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+`;
+
 const ActivityIcon = styled.div`
   width: 40px;
   height: 50px;
@@ -131,6 +142,7 @@ export const ChatScreen: FC = () => {
     selectActivity
   } = useProject();
   const [selectedActivityText, setSelectedActivityText] = useState("");
+  const [isLoadingActivityText, setIsLoadingActivityText] = useState(false);
 
   const {
     isOpen: isSettingsOpen,
@@ -190,14 +202,19 @@ export const ChatScreen: FC = () => {
   }, []);
   
   useEffect(() => {
-    if (state.selectedActivityId) {
-      fetchSelectedActivityText().then((text) => {
+  if (state.selectedActivityId) {
+    setIsLoadingActivityText(true);
+    fetchSelectedActivityText()
+      .then((text) => {
         setSelectedActivityText(text);
+      })
+      .finally(() => {
+        setIsLoadingActivityText(false);
       });
-    } else {
-      setSelectedActivityText("");
-    }
-  }, [state.selectedActivityId]);
+  } else {
+    setSelectedActivityText("");
+  }
+}, [state.selectedActivityId]);
 
   const fetchChats = async () => {
     try {
@@ -669,21 +686,34 @@ export const ChatScreen: FC = () => {
         ]}
       />
       <ChatContainer>
-        {selectedActivityText ? (
-          <Box 
-            width="100%"
-            maxWidth="var(--breakpoint-medium)" 
-            padding="var(--space-l) var(--space-l) 0 var(--space-l)"
-          >
-            <TipTapEditor
-              content={selectedActivityText}
-              isEditing={isEditing}
-              onEdit={handleEditText}
-              onSave={handleSaveText}
-              onCancel={() => setIsEditing(false)}
-            />
-          </Box>
-        ) : (
+      {selectedActivityText || isLoadingActivityText ? (
+  <ActivityTextContainer>
+    <Box 
+      width="100%"
+      maxWidth="var(--breakpoint-medium)" 
+      padding="var(--space-l) var(--space-l) 0 var(--space-l)"
+    >
+      {isLoadingActivityText ? (
+        <>
+          <Flex justify="center" mt={2}>
+            <Text type="s">Loading activity content...</Text>
+          </Flex>
+          <Flex justify="center" mt={2}>
+            <Spinner />
+          </Flex>
+        </>
+      ) : (
+        <TipTapEditor
+          content={selectedActivityText}
+          isEditing={isEditing}
+          onEdit={handleEditText}
+          onSave={handleSaveText}
+          onCancel={() => setIsEditing(false)}
+        />
+      )}
+    </Box>
+  </ActivityTextContainer>
+) : (
           <>
             {dialogue.length === 0 && !isLoadingExistingChat ? (
               <NewConversationMessage />
