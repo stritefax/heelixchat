@@ -129,7 +129,6 @@ export const ChatScreen: FC = () => {
   const [lastResetTimestamp, setLastResetTimestamp] = useState("");
   const [isActivityHistoryOpen, setIsActivityHistoryOpen] = useState(false);
   const [selectedActivityTexts, setSelectedActivityTexts] = useState<string[]>([]);
-  const [combinedActivityText, setCombinedActivityText] = useState("");
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   
@@ -260,22 +259,14 @@ export const ChatScreen: FC = () => {
 
   const handleActivitySelect = (selectedActivities: SelectedActivity[]) => {
     const newTexts = selectedActivities.map((activity) => activity.text);
-    setSelectedActivityTexts((prevTexts) => {
-      const updatedTexts = [...prevTexts, ...newTexts];
-      const combined = updatedTexts.join("\n\n");
-      setCombinedActivityText(combined);
-      return updatedTexts;
-    });
+    setSelectedActivityTexts((prevTexts) => [...prevTexts, ...newTexts]);
     setIsActivityHistoryOpen(false);
   };
 
   const handleRemoveActivity = (index: number) => {
-    setSelectedActivityTexts((prevTexts) => {
-      const updatedTexts = prevTexts.filter((_, i) => i !== index);
-      const combined = updatedTexts.join("\n\n");
-      setCombinedActivityText(combined);
-      return updatedTexts;
-    });
+    setSelectedActivityTexts((prevTexts) => 
+      prevTexts.filter((_, i) => i !== index)
+    );
   };
 
   useEffect(() => {
@@ -393,13 +384,15 @@ export const ChatScreen: FC = () => {
         await invoke("send_prompt_to_openai", {
           conversationHistory: fullConversation,
           isFirstMessage,
-          combinedActivityText: (await getSelectedProjectActivityText()) + "\n" + combinedActivityText,
+          combinedActivityText: (await getSelectedProjectActivityText()) + "\n" + selectedActivityTexts.join("\n\n"),
+
         });
       } else {
         await invoke("send_prompt_to_llm", {
           conversationHistory: fullConversation,
           isFirstMessage,
-          combinedActivityText: (await getSelectedProjectActivityText()) + "\n" + combinedActivityText,
+          combinedActivityText: (await getSelectedProjectActivityText()) + "\n" + selectedActivityTexts.join("\n\n"),
+
         });
       }
 
@@ -410,7 +403,6 @@ export const ChatScreen: FC = () => {
       });
 
       setSelectedActivityTexts([]);
-      setCombinedActivityText("");
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       console.error("Error from Claude API:", errorMessage);
