@@ -17,7 +17,7 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
 import type { StoredMessage, Chat } from "./types";
 import { debounce } from "lodash";
-import { FileText, X, History, Folder } from "lucide-react";
+import { FileText, X, History, Folder, MessageCircle } from "lucide-react";
 import { ScreenContainer } from "@/components/layout";
 
 import {
@@ -647,10 +647,10 @@ export const ChatScreen: FC = () => {
           {
             icon: (
               <Tooltip label="Chat History" placement="bottom">
-        <History size={20} />
+        <MessageCircle size={20} />
         </Tooltip>
             ),
-            text: "History",
+            text: "Chats",
             content: (
               <ChatHistoryList
                 chatHistory={chats}

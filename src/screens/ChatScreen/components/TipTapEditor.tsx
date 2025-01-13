@@ -1,8 +1,4 @@
-import {
-  type FC,
-  useState,
-  useEffect,
-} from "react";
+import { type FC, useState, useEffect } from "react";
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import {
@@ -16,19 +12,19 @@ import {
   CardHeader,
   CardBody,
   CardFooter,
-} from '@chakra-ui/react';
+} from '@chakra-ui/react';  
 import { Edit2, Save, X } from 'lucide-react';
 
 type TipTapEditorProps = {
   content: string;
   isEditing: boolean;
-  onEdit: () => void;
+  onEdit: () => void; 
   onSave: (content: string) => void;
   onCancel: () => void;
 };
 
 export const TipTapEditor: FC<TipTapEditorProps> = ({
-  content,
+  content, 
   isEditing,
   onEdit,
   onSave,
@@ -41,7 +37,7 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
     content: content,
     editable: isEditing,
     onUpdate: ({ editor }) => {
-      setHasChanges(editor.getHTML() !== content);
+      setHasChanges(editor.getHTML() !== content);  
     },
   });
 
@@ -77,65 +73,67 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
   };
 
   return (
-    <Card width="100%">
-      <CardHeader display="flex" alignItems="center" justifyContent="space-between" pb={2}>
-        <Text fontSize="lg" fontWeight="medium">Document Content</Text>
-        {!isEditing && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEdit}
-            leftIcon={<Edit2 size={16} />}
-          >
-            Edit
-          </Button>
-        )}
-      </CardHeader>
-      
-      <CardBody>
-        <Box>
-          {hasChanges && isEditing && (
-            <Alert status="info" mb={4}>
-              <AlertDescription>
-                You have unsaved changes
-              </AlertDescription>
-            </Alert>
-          )}
-          <Box 
-            border="1px" 
-            borderColor="gray.200" 
-            borderRadius="md" 
-            bg={isEditing ? 'white' : 'gray.50'}
-          >
+    <Box width="100%" maxWidth="var(--breakpoint-medium)" padding="var(--space-l)">
+      <Card>
+        <CardHeader display="flex" alignItems="center" justifyContent="space-between" pb={2}>
+          <Text fontSize="lg" fontWeight="medium">Document Content</Text>
+          <Flex alignItems="center">
+            {isEditing ? (
+              <Button
+                variant="ghost" 
+                size="sm"
+                onClick={handleSave}
+                isDisabled={!hasChanges}
+                leftIcon={<Save size={16} />}
+              >
+                Save
+              </Button>
+            ) : (
+              <Button 
+                variant="ghost"
+                size="sm" 
+                onClick={onEdit}
+                leftIcon={<Edit2 size={16} />}
+              >
+                Edit
+              </Button>
+            )}
+          </Flex>
+        </CardHeader>
+        
+        <CardBody>
+          <Box>
             <Box 
-              minH="200px" 
-              p={4}
-              className="prose max-w-none"
+              border="1px"
+              borderColor="white"
+              borderRadius="md"
+              bg={isEditing ? 'white' : 'gray.50'}
             >
-              <EditorContent editor={editor} />
+              <Box
+                minH="200px"
+                p={4}
+                className="prose max-w-none"
+                fontSize="var(--font-size-m)"
+                fontFamily="var(--font-family-body)"
+              >
+                <EditorContent editor={editor} />
+              </Box>  
             </Box>
           </Box>
-        </Box>
-      </CardBody>
-
-      {isEditing && (
-        <CardFooter display="flex" justifyContent="flex-end" gap={2}>
-          <Button
-            variant="outline"
-            onClick={handleCancel}
-            leftIcon={<X size={16} />}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSave}
-            isDisabled={!hasChanges}
-            leftIcon={<Save size={16} />}
-          >
-            Save Changes
-          </Button>
-        </CardFooter>
-      )}
-    </Card>
+        </CardBody>
+        
+        {isEditing && (
+          <CardFooter display="flex" justifyContent="flex-end">
+            <Button
+              variant="outline"
+              onClick={handleCancel} 
+              leftIcon={<X size={16} />}
+            >
+              Cancel
+            </Button>
+          </CardFooter>
+        )}
+      </Card>
+    </Box>
   );
 };
