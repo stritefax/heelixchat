@@ -12,13 +12,15 @@ import {
   Tooltip,
   ButtonGroup,
   Divider,
-  Input
+  Input,
+  InputGroup,
+  InputLeftElement
 } from "@chakra-ui/react";
+import { Search, Plus, File, Trash2, Edit, X, MoreHorizontal } from 'lucide-react';
 import { Text } from "@heelix-app/design";
 import { useProject } from "../../state";
 import { ProjectModal } from "@/components";
 import { type Project } from "../../data/project";
-import { Plus, File, Trash2, Edit, X } from 'lucide-react';
 
 const Container = styled(Box)`
   display: flex;
@@ -66,6 +68,7 @@ export const Projects: FC<{
     updateActivityName,
     addBlankActivity 
   } = useProject();
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<null | number>(null);
 
@@ -162,6 +165,17 @@ const ProjectSelector: FC<{
 }) => {
   const [editingActivityId, setEditingActivityId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
+  
+  // 1) Add local search term state:
+  const [searchTerm, setSearchTerm] = useState("");
+
+  // 2) Filter projects by name:
+  const filteredProjects = useMemo(() => {
+    if (!searchTerm.trim()) return projects;
+    return projects.filter((p) =>
+      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [projects, searchTerm]);
 
   const projectActivities = useMemo(() => {
     if (!selectedProject) return [];
@@ -229,12 +243,32 @@ const ProjectSelector: FC<{
               />
             )}
           </Flex>
-          <MenuList>
-            {projects.map(project => (
+          <MenuList minW="240px" w="240px" py={0}>
+            {/* 3) Our search input at the top of the MenuList */}
+            <Box p={2} h="56px" display="flex" alignItems="center">
+              <InputGroup size="sm">
+                <InputLeftElement pointerEvents="none">
+                <Search size={14} color="var(--chakra-colors-gray-400)" />
+                </InputLeftElement>
+                <Input
+                  placeholder="Search Projects..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  autoComplete="off"       // Disables suggestions from browser
+                  autoCorrect="off"        // Disables autocorrect
+                  spellCheck="false"       // Disables spell checking
+                />
+              </InputGroup>
+            </Box>
+            <Divider my={0} />
+
+            {/* 4) Render filtered projects */}
+            {filteredProjects.map((project) => (
               <MenuItem 
                 key={project.id}
                 onClick={() => onSelectProject(project)}
                 p={3}
+                h="40px"  // Set fixed height
               >
                 <Flex justify="space-between" align="center" w="full">
                   <Text type="m">{project.name}</Text>
@@ -244,16 +278,19 @@ const ProjectSelector: FC<{
                 </Flex>
               </MenuItem>
             ))}
+
             <Divider my={2} />
             <MenuItem 
               icon={<Plus size={16} />}
               onClick={onNewProject}
               p={3}
+              h="40px"  // Maintain consistent height
             >
               <Text type="m">Create New Project</Text>
             </MenuItem>
           </MenuList>
         </Menu>
+
         <Tooltip label="Create New Project">
           <IconButton
             aria-label="Create new project"
@@ -263,6 +300,29 @@ const ProjectSelector: FC<{
             onClick={onNewProject}
           />
         </Tooltip>
+
+        {selectedProject && (
+          <Menu placement="bottom-end">
+            <MenuButton 
+              as={IconButton}
+              aria-label="Project options"
+              icon={<MoreHorizontal size={16} />}
+              size="sm"
+              variant="ghost"
+            />
+    <MenuList minW="240px" w="240px">
+              <MenuItem onClick={() => onEditProject(selectedProject)}>
+                Edit Project
+              </MenuItem>
+              <MenuItem 
+                onClick={() => onDeleteProject(selectedProject)}
+                color="red.500"  
+              >
+                Delete Project
+              </MenuItem>
+            </MenuList>
+          </Menu>
+        )}
       </Flex>
 
       {selectedProject && (
@@ -279,30 +339,13 @@ const ProjectSelector: FC<{
             align="center"
           >
             <Text type="m" bold>Project Documents</Text>
-            <ButtonGroup size="sm" spacing={1}>
-              <IconButton
-                aria-label="Add new document"
-                icon={<Plus size={16} />}
-                size="sm"
-                variant="ghost"
-                onClick={handleAddNewDocument}
-              />
-              <IconButton
-                aria-label="Edit project"
-                icon={<Edit size={16} />}
-                size="sm"
-                variant="ghost"
-                onClick={() => onEditProject(selectedProject)}
-              />
-              <IconButton
-                aria-label="Delete project"
-                icon={<Trash2 size={16} />}
-                size="sm"
-                variant="ghost"
-                colorScheme="red"
-                onClick={() => onDeleteProject(selectedProject)}
-              />
-            </ButtonGroup>
+            <IconButton
+              aria-label="Add new document"
+              icon={<Plus size={16} />}
+              size="sm"
+              variant="ghost"
+              onClick={handleAddNewDocument}
+            />
           </Flex>
           <Box>
             {projectActivities.map((activity) => (

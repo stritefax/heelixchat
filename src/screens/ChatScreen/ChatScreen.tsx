@@ -19,6 +19,8 @@ import type { StoredMessage, Chat } from "./types";
 import { debounce } from "lodash";
 import { FileText, X, History, Folder, MessageCircle } from "lucide-react";
 import { ScreenContainer } from "@/components/layout";
+import { VariableSizeList } from "react-window"; // Updated import for virtualization
+
 
 import {
   UserMessage,

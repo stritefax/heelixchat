@@ -12,8 +12,10 @@ import {
   CardHeader,
   CardBody,
   CardFooter,
+  HStack, // Import HStack for button grouping
+  IconButton,
 } from '@chakra-ui/react';  
-import { Edit2, Save, X } from 'lucide-react';
+import { Edit2, Save, X, Bold, Italic, List } from 'lucide-react'; // Import icons
 
 type TipTapEditorProps = {
   content: string;
@@ -102,26 +104,56 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
         </CardHeader>
         
         <CardBody>
-          <Box>
-            <Box 
-              border="1px"
-              borderColor="white"
-              borderRadius="md"
-              bg={isEditing ? 'white' : 'gray.50'}
-            >
-              <Box
-                minH="200px"
-                p={4}
-                className="prose max-w-none"
-                fontSize="var(--font-size-m)"
-                fontFamily="var(--font-family-body)"
-              >
-                <EditorContent editor={editor} />
-              </Box>  
-            </Box>
+        {isEditing && (
+  <HStack mb={4} spacing={2}>
+    <IconButton // Changed to IconButton
+      aria-label="Bold" // Important for accessibility
+      icon={<Bold size={16} />}
+      onClick={() => editor?.chain().focus().toggleBold().run()}
+      isActive={editor?.isActive('bold')}
+      variant={editor?.isActive('bold') ? 'solid' : 'outline'} // Visual active state
+      size="sm"
+    />
+    <IconButton
+      aria-label="Italic"
+      icon={<Italic size={16} />}
+      onClick={() => editor?.chain().focus().toggleItalic().run()}
+      isActive={editor?.isActive('italic')}
+      variant={editor?.isActive('italic') ? 'solid' : 'outline'}
+      size="sm"
+    />
+    <IconButton
+      aria-label="Bullet List"
+      icon={<List size={16} />}
+      onClick={() => editor?.chain().focus().toggleBulletList().run()}
+      isActive={editor?.isActive('bulletList')}
+      variant={editor?.isActive('bulletList') ? 'solid' : 'outline'}
+      size="sm"
+    />
+    {/* Add more buttons like this for other formatting options */}
+  </HStack>
+          )}
+
+<Box 
+            border="1px"
+            borderColor="white" 
+            borderRadius="md"
+            bg={isEditing ? 'white' : 'gray.50'}
+            sx={{  // <-- Apply sx prop here
+              ".ProseMirror": {
+                outline: "none", // Remove outline
+              },
+              minH: "200px", // Keep existing styles
+              p: 4,
+              className: "prose max-w-none", // and class names...
+              fontSize: "var(--font-size-m)",
+              fontFamily: "var(--font-family-body)"
+            }}
+          >
+            <EditorContent editor={editor} />
           </Box>
         </CardBody>
-        
+
         {isEditing && (
           <CardFooter display="flex" justifyContent="flex-end">
             <Button
