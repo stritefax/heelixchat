@@ -15,7 +15,7 @@ import {
   HStack, // Import HStack for button grouping
   IconButton,
 } from '@chakra-ui/react';  
-import { Edit2, Save, X, Bold, Italic, List } from 'lucide-react'; // Import icons
+import { Edit2, Save, X, Bold, Italic, List, Undo, Redo } from "lucide-react";
 
 type TipTapEditorProps = {
   content: string;
@@ -130,6 +130,20 @@ export const TipTapEditor: FC<TipTapEditorProps> = ({
       variant={editor?.isActive('bulletList') ? 'solid' : 'outline'}
       size="sm"
     />
+    <IconButton
+              aria-label="Undo"
+              icon={<Undo size={16} />}
+              onClick={() => editor?.chain().focus().undo().run()}
+              isDisabled={!editor?.can().undo()} // Disable if can't undo
+              size="sm"
+            />
+            <IconButton
+              aria-label="Redo"
+              icon={<Redo size={16} />}
+              onClick={() => editor?.chain().focus().redo().run()}
+              isDisabled={!editor?.can().redo()} // Disable if can't redo
+              size="sm"
+            />
     {/* Add more buttons like this for other formatting options */}
   </HStack>
           )}
