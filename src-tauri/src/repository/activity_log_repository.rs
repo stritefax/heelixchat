@@ -129,7 +129,7 @@ pub fn get_all_activity_logs(db: &Connection) -> Result<Vec<ActivityItem>, rusql
     let mut activity_logs: Vec<ActivityItem> = Vec::new();
     while let Some(row) = rows.next()? {
         activity_logs.push(ActivityItem {
-            id: row.get("id")?,
+           // id: row.get("id")?,
             timestamp: row.get("timestamp")?,
             ocr_text: row.get("ocr_text")?,
             full_activity_text: row.get("full_activity_text")?,
@@ -191,7 +191,7 @@ pub fn get_latest_activity_log_item(db: &Connection) -> Result<ActivityItem, rus
 
 pub fn get_empty_activity_item() -> ActivityItem {
     ActivityItem {
-        id: 0,
+       // id: 0,
         timestamp: Local::now().to_rfc3339(),
         user_id: "/".to_string(),
         window_title: "/".to_string(),

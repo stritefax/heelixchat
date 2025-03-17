@@ -17,9 +17,10 @@ import { invoke } from "@tauri-apps/api/tauri";
 import { listen } from "@tauri-apps/api/event";
 import type { StoredMessage, Chat } from "./types";
 import { debounce } from "lodash";
-import { FileText, X } from "lucide-react";
+import { FileText, X, History, Folder, MessageCircle } from "lucide-react";
 import { ScreenContainer } from "@/components/layout";
-import { FaHistory, FaBookOpen } from "react-icons/fa";
+
+
 import {
   UserMessage,
   AssistantMessage,
@@ -29,6 +30,7 @@ import {
   SettingsModal,
   SelectActivityModal,
   NewConversationMessage,
+  TipTapEditor,
 } from "./components";
 import { useGlobalSettings } from "../../Providers/SettingsProvider";
 import { DocumentFootnote } from "./components";
@@ -68,6 +70,17 @@ const MessagesContainer = styled.div`
   overflow-anchor: none;
 `;
 
+const ActivityTextContainer = styled.div`
+  display: flex;
+  flex: 1;
+  width: 100%;
+  overflow-y: auto;
+  padding: var(--space-l) var(--space-l) 0 var(--space-l);
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+`;
+
 const ActivityIcon = styled.div`
   width: 40px;
   height: 50px;
@@ -93,6 +106,11 @@ const ActivityPreview = styled.div`
   font-size: 12px;
 `;
 
+interface SelectedActivity {
+  id: number;
+  text: string;
+}
+
 export const ChatScreen: FC = () => {
   const [userInput, setUserInput] = useState("");
   const toast = useToast();
@@ -111,24 +129,28 @@ export const ChatScreen: FC = () => {
   const [dailyOutputTokens, setDailyOutputTokens] = useState(0);
   const [lastResetTimestamp, setLastResetTimestamp] = useState("");
   const [isActivityHistoryOpen, setIsActivityHistoryOpen] = useState(false);
-  const [selectedActivityTexts, setSelectedActivityTexts] = useState<string[]>(
-    []
-  );
-  const [combinedActivityText, setCombinedActivityText] = useState("");
+  const [selectedActivityTexts, setSelectedActivityTexts] = useState<string[]>([]);
   const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const { getSelectedProjectActivityText } = useProject();
-
-  const handleActivityHistoryToggle = () => {
-    setIsActivityHistoryOpen(!isActivityHistoryOpen);
-  };
+  const [isEditing, setIsEditing] = useState(false);
+  
+  const { 
+    state,
+    getSelectedProject, 
+    getSelectedProjectActivityText,
+    fetchSelectedActivityText,
+    selectProject,
+    selectActivity
+  } = useProject();
+  const [selectedActivityText, setSelectedActivityText] = useState("");
+  const [isLoadingActivityText, setIsLoadingActivityText] = useState(false);
 
   const {
     isOpen: isSettingsOpen,
     onOpen: onSettingsOpen,
     onClose: onSettingsClose,
   } = useDisclosure();
-  const [activeSettingsCategory, setActiveSettingsCategory] =
-    useState("privacy");
+  
+  const [activeSettingsCategory, setActiveSettingsCategory] = useState("privacy");
   const { settings } = useGlobalSettings();
 
   const debouncedScroll = useMemo(
@@ -178,16 +200,28 @@ export const ChatScreen: FC = () => {
       unlisten3.then((f) => f());
     };
   }, []);
+  
+  useEffect(() => {
+  if (state.selectedActivityId) {
+    setIsLoadingActivityText(true);
+    fetchSelectedActivityText()
+      .then((text) => {
+        setSelectedActivityText(text);
+      })
+      .finally(() => {
+        setIsLoadingActivityText(false);
+      });
+  } else {
+    setSelectedActivityText("");
+  }
+}, [state.selectedActivityId]);
 
   const fetchChats = async () => {
     try {
       messageRef.current = null;
       const allChats = await invoke<Chat[]>("get_all_chats");
       setChats(allChats);
-      if (
-        selectedChatId &&
-        !allChats.some((chat) => chat.id === selectedChatId)
-      ) {
+      if (selectedChatId && !allChats.some((chat) => chat.id === selectedChatId)) {
         setSelectedChatId(undefined);
         setDialogue([]);
       }
@@ -199,10 +233,7 @@ export const ChatScreen: FC = () => {
   const fetchMessages = async (chatId: number) => {
     try {
       setIsLoadingExistingChat(true);
-      const messages = await invoke<StoredMessage[]>(
-        "get_messages_by_chat_id",
-        { chatId }
-      );
+      const messages = await invoke<StoredMessage[]>("get_messages_by_chat_id", { chatId });
       setDialogue(messages);
       setIsFirstMessage(messages.length === 0);
     } catch (error) {
@@ -212,47 +243,49 @@ export const ChatScreen: FC = () => {
     }
   };
 
-  const handleActivitySelect = (
-    selectedActivities: Array<{ id: number; text: string }>
-  ) => {
-    const newTexts = selectedActivities.map((activity) => activity.text);
-    setSelectedActivityTexts((prevTexts) => {
-      const updatedTexts = [...prevTexts, ...newTexts];
-      // Combine all texts into a single string
-      const combined = updatedTexts.join("\n\n");
+  const handleEditText = () => {
+    setIsEditing(true);
+  };
 
-      console.log("COMBINED_TEXT_THINGY", combined);
-      setCombinedActivityText(combined);
-      return updatedTexts;
-    });
+  const handleSaveText = async (newContent: string) => {
+    if (state.selectedActivityId) {
+      await invoke<void>('update_project_activity_text', {
+        activityId: state.selectedActivityId,
+        text: newContent,
+      });
+      await fetchSelectedActivityText();
+      setIsEditing(false);
+    }
+  };
+
+  const handleActivitySelect = (selectedActivities: SelectedActivity[]) => {
+    const newTexts = selectedActivities.map((activity) => activity.text);
+    setSelectedActivityTexts((prevTexts) => [...prevTexts, ...newTexts]);
     setIsActivityHistoryOpen(false);
   };
 
   const handleRemoveActivity = (index: number) => {
-    setSelectedActivityTexts((prevTexts) => {
-      const updatedTexts = prevTexts.filter((_, i) => i !== index);
-      // Recombine the remaining texts
-      const combined = updatedTexts.join("\n\n");
-      setCombinedActivityText(combined);
-      return updatedTexts;
-    });
+    setSelectedActivityTexts((prevTexts) => 
+      prevTexts.filter((_, i) => i !== index)
+    );
   };
 
   useEffect(() => {
     if (selectedChatId) {
       setDialogue([]);
       fetchMessages(selectedChatId);
+      selectActivity(null);
     } else {
       setDialogue([]);
+      selectActivity(null);
     }
   }, [selectedChatId]);
 
   const generateName = async (chatId: number, userInput: string) => {
     try {
-      const name =
-        settings.api_choice === "openai"
-          ? await invoke<string>("generate_conversation_name", { userInput })
-          : await invoke<string>("name_conversation", { userInput });
+      const name = settings.api_choice === "openai"
+        ? await invoke<string>("generate_conversation_name", { userInput })
+        : await invoke<string>("name_conversation", { userInput });
       await invoke<boolean>("update_chat_name", { chatId, name });
       setChats((prevChats) =>
         prevChats.map((chat) => (chat.id === chatId ? { ...chat, name } : chat))
@@ -284,7 +317,6 @@ export const ChatScreen: FC = () => {
     }
     try {
       const chatId = await invoke<number>("create_chat", { name: "New Chat" });
-      console.log("New chat created with ID:", chatId);
       const currentTime = new Date().toISOString();
       generateName(chatId, userInput);
       setChats([
@@ -313,7 +345,6 @@ export const ChatScreen: FC = () => {
         currentDate.getMonth() !== lastResetDate.getMonth() ||
         currentDate.getFullYear() !== lastResetDate.getFullYear()
       ) {
-        // It's a new day, reset the tokens
         setDailyOutputTokens(0);
         setLastResetTimestamp(currentDate.toISOString());
         saveTokenData(0);
@@ -341,8 +372,7 @@ export const ChatScreen: FC = () => {
             id: Date.now(),
             chat_id: chatId,
             role: "assistant",
-            content:
-              "You have reached your daily token limit. The limit resets at 12am.",
+            content: "You have reached your daily token limit. The limit resets at 12am.",
             created_at: new Date().toISOString(),
           },
         ]);
@@ -350,29 +380,22 @@ export const ChatScreen: FC = () => {
         setIsGenerating(false);
         return;
       }
-      console.log("Sending combinedActivityText to LLM:", combinedActivityText);
 
       if (settings.api_choice === "openai") {
         await invoke("send_prompt_to_openai", {
           conversationHistory: fullConversation,
           isFirstMessage,
-          combinedActivityText:
-            (await getSelectedProjectActivityText()) +
-            "/n" +
-            combinedActivityText, // Add this line
+          combinedActivityText: (await getSelectedProjectActivityText()) + "\n" + selectedActivityTexts.join("\n\n"),
+
         });
       } else {
         await invoke("send_prompt_to_llm", {
           conversationHistory: fullConversation,
           isFirstMessage,
-          combinedActivityText:
-            (await getSelectedProjectActivityText()) +
-            "/n" +
-            combinedActivityText, // Add this line
+          combinedActivityText: (await getSelectedProjectActivityText()) + "\n" + selectedActivityTexts.join("\n\n"),
+
         });
       }
-
-      console.log("Conversation history sent to LLM");
 
       await invoke("create_message", {
         chatId,
@@ -381,10 +404,8 @@ export const ChatScreen: FC = () => {
       });
 
       setSelectedActivityTexts([]);
-      setCombinedActivityText("");
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : "An unexpected error occurred";
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
       console.error("Error from Claude API:", errorMessage);
       setDialogue((prevDialogue) => [
         ...prevDialogue,
@@ -403,8 +424,7 @@ export const ChatScreen: FC = () => {
     if (settings.api_choice === "openai" && !settings.api_key_open_ai) {
       toast({
         title: "Api key not provided",
-        description:
-          "Provide the necessary keys in the Settings > General to continue",
+        description: "Provide the necessary keys in the Settings > General to continue",
         status: "error",
         duration: 9000,
         isClosable: true,
@@ -412,14 +432,10 @@ export const ChatScreen: FC = () => {
       onSettingsOpen();
       return;
     }
-    if (
-      (settings.api_choice === "claude" && !settings.api_key_claude) ||
-      !settings.api_key_open_ai
-    ) {
+    if ((settings.api_choice === "claude" && !settings.api_key_claude) || !settings.api_key_open_ai) {
       toast({
         title: "Api keys not provided",
-        description:
-          "Claude doesn't yet provide vector embedding due to this limitation both claude and Chat GPT keys need to be provided. Provide the necessary keys in the Settings > General to continue.",
+        description: "Claude doesn't yet provide vector embedding due to this limitation both claude and Chat GPT keys need to be provided. Provide the necessary keys in the Settings > General to continue.",
         status: "error",
         duration: 9000,
         isClosable: true,
@@ -427,7 +443,11 @@ export const ChatScreen: FC = () => {
       onSettingsOpen();
       return;
     }
-
+    if (selectedActivityText) {
+      selectActivity(null);
+      setSelectedActivityText("");
+    }
+    
     setIsLoading(true);
     setIsGenerating(true);
     setFirstTokenReceived(false);
@@ -475,7 +495,7 @@ export const ChatScreen: FC = () => {
             const newMessage = {
               id: Date.now(),
               chat_id: chatId,
-              role: "assistant" as "assistant",
+              role: "assistant" as const,
               content: assistantMessage,
               created_at: new Date().toISOString(),
             };
@@ -506,6 +526,10 @@ export const ChatScreen: FC = () => {
     setIsChatHistoryOpen(!isChatHistoryOpen);
   };
 
+  const handleActivityHistoryToggle = () => {
+    setIsActivityHistoryOpen(!isActivityHistoryOpen);
+  };
+
   const handleDeleteChat = async (chatId: number) => {
     try {
       await invoke("delete_chat", { chatId });
@@ -519,6 +543,7 @@ export const ChatScreen: FC = () => {
       console.error("Error deleting chat:", error);
     }
   };
+
   const isMacOS = useRef<boolean | null>(null);
   const osCheckComplete = useRef<boolean>(false);
 
@@ -608,6 +633,8 @@ export const ChatScreen: FC = () => {
     setIsGenerating(false);
     setFirstTokenReceived(false);
     setSelectedActivityTexts([]);
+    selectActivity(null);
+    setSelectedActivityText("");
   };
 
   return (
@@ -621,10 +648,10 @@ export const ChatScreen: FC = () => {
           {
             icon: (
               <Tooltip label="Chat History" placement="bottom">
-                <FaHistory size={20} />
-              </Tooltip>
+        <MessageCircle size={20} />
+        </Tooltip>
             ),
-            text: "History",
+            text: "Chats",
             content: (
               <ChatHistoryList
                 chatHistory={chats}
@@ -640,68 +667,104 @@ export const ChatScreen: FC = () => {
             ),
           },
           {
-            icon: <FaBookOpen size={20} />,
+            icon: <Folder size={20} />,
             text: "Projects",
-            content: <Projects />,
+            content: (
+              <Projects
+                selectedActivityId={state.selectedActivityId}
+                onSelectActivity={selectActivity}
+              />
+            ),
           },
         ]}
       />
       <ChatContainer>
-        {dialogue.length === 0 && !isLoadingExistingChat ? (
-          <NewConversationMessage />
-        ) : (
-          <MessagesScrollContainer ref={messageContainerRef}>
-            <MessagesContainer>
-              {dialogue.map((message, index) => {
-                const messageProps =
-                  index === dialogue.length - 1
-                    ? {
-                        ref: messageRef,
-                      }
-                    : {};
-                return (
-                  <Fragment key={message.id}>
-                    {message.role === "user" && (
-                      <UserMessage
-                        key={message.id}
-                        message={message}
-                        name={"You"}
-                        {...messageProps}
-                      />
-                    )}
-                    {message.role === "assistant" && (
-                      <>
-                        <AssistantMessage
-                          key={message.id}
-                          message={message}
-                          isGenerating={isGenerating}
-                          {...messageProps}
-                        />
-                        {index === 1 && windowTitles.length > 0 && (
-                          <DocumentFootnote windowTitles={windowTitles} />
+      {selectedActivityText || isLoadingActivityText ? (
+  <ActivityTextContainer>
+    <Box 
+      width="100%"
+      maxWidth="var(--breakpoint-medium)" 
+      padding="var(--space-l) var(--space-l) 0 var(--space-l)"
+    >
+      {isLoadingActivityText ? (
+        <>
+          <Flex justify="center" mt={2}>
+            <Text type="s">Loading activity content...</Text>
+          </Flex>
+          <Flex justify="center" mt={2}>
+            <Spinner />
+          </Flex>
+        </>
+      ) : (
+        <TipTapEditor
+          content={selectedActivityText}
+          isEditing={isEditing}
+          onEdit={handleEditText}
+          onSave={handleSaveText}
+          onCancel={() => setIsEditing(false)}
+        />
+      )}
+    </Box>
+  </ActivityTextContainer>
+) : (
+          <>
+            {dialogue.length === 0 && !isLoadingExistingChat ? (
+              <NewConversationMessage />
+            ) : (
+              <MessagesScrollContainer ref={messageContainerRef}>
+                <MessagesContainer>
+                  {dialogue.map((message, index) => {
+                    const messageProps =
+                      index === dialogue.length - 1
+                        ? {
+                            ref: messageRef,
+                          }
+                        : {};
+                    return (
+                      <Fragment key={message.id}>
+                        {message.role === "user" && (
+                          <UserMessage
+                            key={message.id}
+                            message={message}
+                            name={"You"}
+                            {...messageProps}
+                          />
                         )}
-                      </>
-                    )}
-                  </Fragment>
-                );
-              })}
-              {!firstTokenReceived && isGenerating && (
-                <Flex justify="center" mt={2}>
-                  <Text type="s">Assistant is typing...</Text>
-                </Flex>
-              )}
-              {isGenerating && (
-                <Flex justify="center" mt={2}>
-                  <Spinner />
-                </Flex>
-              )}
-            </MessagesContainer>
-            {isLoadingExistingChat && (
-              <Flex justify="center" mt={2}>
-                <Spinner />
-              </Flex>
+                        {message.role === "assistant" && (
+                          <>
+                            <AssistantMessage
+                              key={message.id}
+                              message={message}
+                              isGenerating={isGenerating}
+                              {...messageProps}
+                            />
+                            {index === 1 && windowTitles.length > 0 && (
+                              <DocumentFootnote windowTitles={windowTitles} />
+                            )}
+                          </>
+                        )}
+                      </Fragment>
+                    );
+                  })}
+                  {!firstTokenReceived && isGenerating && (
+                    <Flex justify="center" mt={2}>
+                      <Text type="s">Assistant is typing...</Text>
+                    </Flex>
+                  )}
+                  {isGenerating && (
+                    <Flex justify="center" mt={2}>
+                      <Spinner />
+                    </Flex>
+                  )}
+                </MessagesContainer>
+                {isLoadingExistingChat && (
+                  <Flex justify="center" mt={2}>
+                    <Spinner />
+                  </Flex>
+                )}
+              </MessagesScrollContainer>
             )}
-          </MessagesScrollContainer>
+          </>
         )}
         {selectedActivityTexts.length > 0 && (
           <Box mt={4} p={4} maxWidth="var(--breakpoint-medium)" mx="auto">

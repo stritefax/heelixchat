@@ -36,7 +36,7 @@ use crate::repository::activity_log_repository;
 use crate::repository::chat_db_repository;
 use crate::repository::permissions_repository::{get_permissions, update_permission};
 use crate::repository::project_repository::{
-    delete_project, fetch_all_projects, save_project, update_project,
+    delete_project, fetch_all_projects, add_blank_document, save_project, update_project,get_activity_text_from_project, update_activity_text, update_activity_name,
 };
 use crate::repository::settings_repository::{get_setting, get_settings, insert_or_update_setting};
 use tauri_plugin_autostart::MacosLauncher;
@@ -151,6 +151,10 @@ async fn main() {
             get_activity_history,
             delete_activity,
             get_activity_full_text_by_id,
+            get_app_project_activity_text,
+            update_project_activity_text,
+            add_project_blank_activity,
+            update_project_activity_name,
         ])
         .manage(AppState {
             db: Default::default(),
@@ -474,6 +478,47 @@ fn get_activity_full_text_by_id(
 ) -> Result<Option<(String, String)>, String> {
     app_handle
         .db(|db| crate::activity_log_repository::get_activity_full_text_by_id(db, id, None))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn get_app_project_activity_text(
+    app_handle: AppHandle,
+    project_id: i64,
+    activity_id: i64,
+) -> Result<String, ()> {
+    let text = app_handle.db(|database| get_activity_text_from_project(database, project_id, activity_id).unwrap());
+    return Ok(text);
+}
+
+#[tauri::command]
+fn update_project_activity_text(
+    app_handle: AppHandle,
+    activity_id: i64,
+    text: &str,
+) -> Result<(), String> {
+    app_handle
+        .db(|db| update_activity_text(db, activity_id, text))
+        .map_err(|e| e.to_string())
+}
+#[tauri::command]
+fn add_project_blank_activity(
+    app_handle: AppHandle,
+    project_id: i64,
+) -> Result<i64, String> {
+    app_handle
+        .db(|db| add_blank_document(db, project_id))
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn update_project_activity_name(
+    app_handle: AppHandle,
+    activity_id: i64,
+    name: &str,
+) -> Result<(), String> {
+    app_handle
+        .db(|db| update_activity_name(db, activity_id, name))
         .map_err(|e| e.to_string())
 }
 

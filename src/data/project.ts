@@ -3,7 +3,9 @@ import { invoke } from "@tauri-apps/api/tauri";
 export type Project = {
   id: number;
   name: string;
-  activities: number[];
+  activities: number[];   
+  activity_ids: (number | null)[];
+  activity_names: string[];   // Array of document names
 };
 
 export const fetchProjects = async (offset: number): Promise<any[]> => {
@@ -25,9 +27,22 @@ export const deleteProject = async (projectId: Project["id"]) => {
   return await invoke("delete_app_project", { projectId });
 };
 
+export const addBlankActivity = async (projectId: number): Promise<number> => {
+  return await invoke<number>("add_project_blank_activity", { projectId });
+};
+
+export const updateActivityName = async (activityId: number, name: string) => {
+  return await invoke("update_project_activity_name", { 
+    activityId,
+    name 
+  });
+};
+
 export const projectService = {
   fetch: fetchProjects,
   save: saveProject,
   update: updateProject,
   delete: deleteProject,
+  updateActivityName,
+  addBlankActivity,
 };

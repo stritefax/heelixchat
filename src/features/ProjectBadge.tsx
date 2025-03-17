@@ -1,10 +1,10 @@
-import { useMemo, type FC } from "react";
-import { Flex } from "@chakra-ui/react";
+import { type FC, useMemo } from "react";
+import { Flex, IconButton } from "@chakra-ui/react";
 import { useProject } from "../state";
-import { FaBookOpen } from "react-icons/fa";
+import { Folders, X } from 'lucide-react'; // Changed from FaBookOpen
 
 export const ProjectBadge: FC = () => {
-  const { state, getSelectedProject } = useProject();
+  const { state, getSelectedProject, selectProject } = useProject();
   const project = useMemo(() => getSelectedProject(), [state]);
 
   if (!project) {
@@ -19,10 +19,20 @@ export const ProjectBadge: FC = () => {
         padding: "2px 8px",
         gap: "8px",
         alignItems: "center",
+        position: "relative", // Added for positioning the X button
       }}
     >
-      <FaBookOpen />
+      <Folders size={16} /> {/* Changed from FaBookOpen, added size */}
       <span>{project.name}</span>
+      <IconButton
+        aria-label="Unselect project"
+        icon={<X size={14} />}
+        size="xs"
+        variant="ghost"
+        onClick={() => selectProject(undefined)}
+        ml={1}
+        _hover={{ bg: 'gray-100' }}
+      />
     </Flex>
   );
 };

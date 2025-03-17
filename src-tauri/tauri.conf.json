@@ -8,7 +8,7 @@
     "withGlobalTauri": false
   },
   "package": {
-    "productName": "Heelix Chat",
+    "productName": "Heelix",
     "version": "0.9.5"
   },
   "tauri": {
@@ -92,7 +92,7 @@
         "fullscreen": false,
         "height": 800,
         "resizable": true,
-        "title": "Heelix Chat",
+        "title": "Heelix",
         "width": 1200
       }
     ]

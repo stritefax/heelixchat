@@ -54,7 +54,7 @@ export const ActivitySelector: FC<ActivitySelectorProps> = ({
       borderRadius="md"
     >
       <Heading size="md" mb={4}>
-        Select activities to add to project
+        Select recent activities to add to project
       </Heading>
       <Input
         placeholder="Search items..."

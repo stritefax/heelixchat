@@ -167,7 +167,7 @@ pub async fn start_a_monitoring_cycle(handle: AppHandle, app_data_dir: &str) -> 
     };
 
     return ActivityItem {
-        id: activity_log_item.id,
+       // id: activity_log_item.id,
         timestamp: timestamp.to_rfc3339(),
         ocr_text,
         full_activity_text,
